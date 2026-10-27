@@ -1,4 +1,4 @@
-# 이 파일은 앞으로 바꿀 일이 없도록 최소한으로 둠 (업데이트는 scripts/ 와 app/ 만 패치)
+# 수집 워크플로. 거래소를 새로 추가할 때만 아래 env에 키 이름을 더함
 name: sync-trades
 
 on:
@@ -24,8 +24,13 @@ jobs:
 
       - name: 거래소 체결내역 수집
         env:
-          # 사이트에서 등록한 거래소 키를 전부 전달 → 거래소가 늘어도 이 파일은 그대로
-          TJ_SECRETS: ${{ toJSON(secrets) }}
+          # 필요한 키만 하나씩 전달 (공개 저장소에서 Secrets 전체를 넘기면 GitHub이 위험한 워크플로로 막음)
+          OKX_API_KEY: ${{ secrets.OKX_API_KEY }}
+          OKX_SECRET_KEY: ${{ secrets.OKX_SECRET_KEY }}
+          OKX_PASSPHRASE: ${{ secrets.OKX_PASSPHRASE }}
+          BITGET_API_KEY: ${{ secrets.BITGET_API_KEY }}
+          BITGET_SECRET_KEY: ${{ secrets.BITGET_SECRET_KEY }}
+          BITGET_PASSPHRASE: ${{ secrets.BITGET_PASSPHRASE }}
         run: python3 scripts/sync.py
 
       - name: 변경분 커밋
