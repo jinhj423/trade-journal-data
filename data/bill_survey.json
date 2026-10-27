@@ -1,0 +1,478 @@
+{
+ "account_types": {
+  "1": {
+   "desc": "Transfer",
+   "sub": {
+    "11": "Transfer in",
+    "12": "Transfer out",
+    "257": "Using voucher",
+    "283": "Asset transfer for spot copy trading",
+    "284": "Copy trade automatic transfer in",
+    "285": "Copy trade manual transfer in",
+    "286": "Copy trade automatic transfer out",
+    "287": "Copy trade manual transfer out",
+    "288": "Trading bonus transfer in",
+    "290": "",
+    "292": "Trading bonus reclamation transfer out",
+    "381": "Auto Earn+ lending interest",
+    "392": "Auto Earn+ staking reward",
+    "420": "VIP Loan delta reduction transfer in",
+    "429": "Auto Earn+ Bonus"
+   }
+  },
+  "2": {
+   "desc": "Trade",
+   "sub": {
+    "1": "Buy",
+    "2": "Sell",
+    "3": "Open long",
+    "4": "Open short",
+    "5": "Close long",
+    "6": "Close short",
+    "407": "Momentum catcher spot sell",
+    "408": "Momentum catcher spot buy",
+    "410": "Buy up",
+    "411": "Buy down",
+    "412": "Sell up",
+    "413": "Sell down",
+    "441": "XStock Simple Option - Opening transfer in",
+    "442": "XStock Simple Option - Opening transfer out",
+    "443": "XStock Simple Option - Settlement transfer in",
+    "444": "XStock Simple Option - Settlement transfer out",
+    "445": "XStock Simple Option - Cancellation transfer in",
+    "446": "XStock Simple Option - Cancellation transfer out",
+    "451": "XStock Simple Option - Short collateral transfer in/freeze",
+    "452": "XStock Simple Option - Short collateral release/return"
+   }
+  },
+  "3": {
+   "desc": "Delivery",
+   "sub": {
+    "112": "Expiry (close long)",
+    "113": "Expiry (close short)",
+    "117": "Overloss recovery (expiry)",
+    "170": "Exercised",
+    "171": "Exercised by counterparty",
+    "172": "Expired OTM",
+    "414": "Expiry up",
+    "415": "Expiry down"
+   }
+  },
+  "4": {
+   "desc": "Auto token conversion",
+   "sub": {
+    "114": "Forced repayment buy",
+    "115": "Forced repayment sell",
+    "312": "Auto liability offset",
+    "376": "",
+    "377": "",
+    "393": "",
+    "394": ""
+   }
+  },
+  "5": {
+   "desc": "Forced liquidation",
+   "sub": {
+    "16": "Forced repay",
+    "17": "Forced borrow to repay",
+    "100": "ADL close long",
+    "101": "ADL close short",
+    "102": "Partial liquidation buy",
+    "103": "Partial liquidation sell",
+    "104": "Liquidation (close long)",
+    "105": "Liquidation (close short)",
+    "106": "Liquidation buy",
+    "107": "Forced liquidation sell",
+    "110": "Liquidation transfer in",
+    "111": "Liquidation transfer out",
+    "116": "Balance deducted for liquidation",
+    "313": "Liquidation offset",
+    "314": "Forced interest repayment",
+    "315": "Delisting repayment",
+    "316": "Liquidation repayment",
+    "317": "Liquidation borrowing"
+   }
+  },
+  "6": {
+   "desc": "Margin transfer",
+   "sub": {
+    "160": "Manual margin increase",
+    "161": "Manual margin decrease",
+    "162": "Auto margin increase",
+    "332": "Margin in",
+    "333": "Margin out",
+    "334": "Margin offset"
+   }
+  },
+  "7": {
+   "desc": "Interest",
+   "sub": {
+    "9": "Interest deduction",
+    "14": "VIP Loan deduction",
+    "293": "VIP Loan deduction",
+    "294": "VIP Loan refund",
+    "295": "VIP Loan overdue penalty"
+   }
+  },
+  "8": {
+   "desc": "Funding rate",
+   "sub": {
+    "173": "Funding fee expense",
+    "174": "Funding fee income"
+   }
+  },
+  "9": {
+   "desc": "ADL",
+   "sub": {
+    "125": "ADL close long",
+    "126": "ADL close short",
+    "127": "ADL buy",
+    "128": "ADL sell"
+   }
+  },
+  "10": {
+   "desc": "Overloss recovery",
+   "sub": {
+    "108": "Overloss recovery"
+   }
+  },
+  "11": {
+   "desc": "System crypto conversion",
+   "sub": {
+    "118": "Transfer in",
+    "119": "Transfer out"
+   }
+  },
+  "12": {
+   "desc": "Strategy transfer",
+   "sub": {
+    "200": "From trading bot",
+    "201": "From trading bot (manual)",
+    "202": "To trading bot",
+    "203": "To trading bot (manual)",
+    "267": "Profit share payment",
+    "268": "Profit share refund",
+    "269": "Profit share income",
+    "276": "",
+    "277": "",
+    "372": "Bot airdrop (transfer in)",
+    "373": "Bot airdrop (transfer out)",
+    "374": "Bot airdrop reclaim (transfer in)",
+    "375": "Bot airdrop reclaim (transfer out)"
+   }
+  },
+  "13": {
+   "desc": "DDH",
+   "sub": {
+    "131": "DDH buy",
+    "132": "DDH sell"
+   }
+  },
+  "14": {
+   "desc": "Block trade",
+   "sub": {
+    "204": "Block trade buy",
+    "205": "Block trade sell",
+    "206": "Block trade open long",
+    "207": "Block trade open short",
+    "208": "Block trade close long",
+    "209": "Block trade close short"
+   }
+  },
+  "15": {
+   "desc": "Quick margin",
+   "sub": {
+    "210": "Manual borrow",
+    "211": "Manual repay",
+    "212": "Auto borrow",
+    "213": "Auto repay",
+    "216": "Borrow to repay interest"
+   }
+  },
+  "16": {
+   "desc": "Borrowing",
+   "sub": {
+    "306": "Manual borrow",
+    "307": "Auto-borrow",
+    "308": "Manual repay",
+    "309": "Auto-repay"
+   }
+  },
+  "20": {
+   "desc": "Token conversion",
+   "sub": {
+    "220": "Buy",
+    "221": "Sell"
+   }
+  },
+  "22": {
+   "desc": "",
+   "sub": {
+    "259": "",
+    "260": ""
+   }
+  },
+  "24": {
+   "desc": "",
+   "sub": {
+    "270": "Spread trade buy",
+    "271": "Spread trade sell",
+    "272": "Spread trade open long",
+    "273": "Spread trade open short",
+    "274": "",
+    "275": ""
+   }
+  },
+  "26": {
+   "desc": "",
+   "sub": {
+    "296": "From structured order placements",
+    "297": "To structured order placements",
+    "298": "From structured settlements",
+    "299": "To structured settlements",
+    "340": "Flywheel subscription (in)",
+    "341": "Flywheel subscription (out)",
+    "342": "Flywheel settlement (in)",
+    "343": "Flywheel settlement (out)",
+    "344": "Flywheel failed trade (in)",
+    "345": "Flywheel failed trade (out)"
+   }
+  },
+  "27": {
+   "desc": "Convert",
+   "sub": {
+    "318": "Convert in",
+    "319": "Convert out",
+    "379": "Auto convert in",
+    "380": "Auto convert out"
+   }
+  },
+  "28": {
+   "desc": "Easy convert",
+   "sub": {
+    "236": "Easy convert in",
+    "237": "Easy convert out"
+   }
+  },
+  "29": {
+   "desc": "One-click repay",
+   "sub": {
+    "224": "One-click repay in",
+    "225": "One-click repay out"
+   }
+  },
+  "30": {
+   "desc": "Simple trade",
+   "sub": {
+    "320": "Simple buy",
+    "321": "Simple sell"
+   }
+  },
+  "32": {
+   "desc": "Move position",
+   "sub": {
+    "324": "Buy",
+    "325": "Sell",
+    "326": "Open long",
+    "327": "Open short",
+    "328": "Close long",
+    "329": "Close short"
+   }
+  },
+  "33": {
+   "desc": "Loans",
+   "sub": {
+    "348": "Forced repayment",
+    "349": "Forced repayment",
+    "350": "Forced repayment fee deduction",
+    "351": "Forced repayment refund",
+    "352": "Forced repayment penalty fee deduction",
+    "353": "Forced repayment penalty fee (pending deduction)",
+    "354": "Forced repayment penalty fee",
+    "356": "Forced conversion (pending deduction)",
+    "357": "Transfer of forced-converted asset to funding account",
+    "358": "OTC system account transfer in",
+    "359": "OTC system account transfer out"
+   }
+  },
+  "34": {
+   "desc": "Settlement",
+   "sub": {
+    "355": "Settlement PnL"
+   }
+  },
+  "35": {
+   "desc": "Options market",
+   "sub": {
+    "382": "Simple options asset transfer out",
+    "383": "Simple options asset transfer in"
+   }
+  },
+  "37": {
+   "desc": "Corporate action",
+   "sub": {
+    "421": "Corporate action: dividend",
+    "422": "Corporate action: open long",
+    "423": "Corporate action: open short",
+    "424": "Corporate action: close long",
+    "425": "Corporate action: close short",
+    "426": "Corporate action: buy",
+    "427": "Corporate action: sell",
+    "432": "Corporate Action Dividend",
+    "433": "Corporate Action Fund Transfer",
+    "434": "Corporate Action User Fund Adjustment",
+    "435": "Corporate Action Share Adjustment"
+   }
+  },
+  "38": {
+   "desc": "USDG Rewards",
+   "sub": {
+    "416": "USDG subscription",
+    "417": "USDG redemption",
+    "418": "USDG redemption (principal)",
+    "419": "USDG subscription (principal)"
+   }
+  },
+  "250": {
+   "desc": "Profit share payment",
+   "sub": {
+    "250": "Contract profit share payment",
+    "280": "Spot profit share payment"
+   }
+  },
+  "251": {
+   "desc": "Profit share refund",
+   "sub": {
+    "251": "Contract profit share refund",
+    "281": "Spot profit share refund"
+   }
+  }
+ },
+ "account": {
+  "2/5/USDT": {
+   "n": 1601,
+   "balChg": 7143.307754,
+   "fee": -467.057306,
+   "first": 1783081272308,
+   "last": 1793112653360
+  },
+  "2/3/USDT": {
+   "n": 1872,
+   "balChg": -2059.081943,
+   "fee": -472.437853,
+   "first": 1783081327779,
+   "last": 1793109766263
+  },
+  "2/6/USDT": {
+   "n": 405,
+   "balChg": 693.246477,
+   "fee": -255.744843,
+   "first": 1783089112856,
+   "last": 1793109704626
+  },
+  "2/4/USDT": {
+   "n": 626,
+   "balChg": -463.263186,
+   "fee": -263.953186,
+   "first": 1783081474292,
+   "last": 1793106354267
+  },
+  "8/173/USDT": {
+   "n": 643,
+   "balChg": -192.236569,
+   "fee": 0.0,
+   "first": 1782835200250,
+   "last": 1793102401761
+  },
+  "8/174/USDT": {
+   "n": 312,
+   "balChg": 119.57996,
+   "fee": 0.0,
+   "first": 1782849600650,
+   "last": 1793102400975
+  },
+  "1/11/USDT": {
+   "n": 43,
+   "balChg": 12344.818798,
+   "fee": 0.0,
+   "first": 1783094375806,
+   "last": 1793073873638
+  },
+  "10/108/USDT": {
+   "n": 3,
+   "balChg": 29.045061,
+   "fee": 0.0,
+   "first": 1787272304155,
+   "last": 1792698053839
+  },
+  "5/104/USDT": {
+   "n": 6,
+   "balChg": -5051.930103,
+   "fee": -18.545398,
+   "first": 1787272304155,
+   "last": 1792698053839
+  },
+  "1/12/USDT": {
+   "n": 16,
+   "balChg": -8049.304465,
+   "fee": 0.0,
+   "first": 1783374325094,
+   "last": 1791186855250
+  },
+  "5/105/USDT": {
+   "n": 2,
+   "balChg": -2060.429713,
+   "fee": -11.714595,
+   "first": 1787272304155,
+   "last": 1787272304155
+  }
+ },
+ "funding": {
+  "173/USDT": {
+   "n": 153,
+   "balChg": 78.313927,
+   "first": 1790444423000,
+   "last": 1793112684000,
+   "notes": [
+    "Fee rebate"
+   ]
+  },
+  "131/USDT": {
+   "n": 8,
+   "balChg": -5964.728784,
+   "first": 1790695333000,
+   "last": 1793073873000,
+   "notes": [
+    "Transferred to trading account"
+   ]
+  },
+  "1/USDT": {
+   "n": 3,
+   "balChg": 5925.645963,
+   "first": 1791592413000,
+   "last": 1793073873000,
+   "notes": [
+    "Deposit"
+   ]
+  },
+  "2/USDT": {
+   "n": 4,
+   "balChg": -1606.0,
+   "first": 1790775000000,
+   "last": 1791186857000,
+   "notes": [
+    "Withdrawal"
+   ]
+  },
+  "130/USDT": {
+   "n": 4,
+   "balChg": 1582.475139,
+   "first": 1790774990000,
+   "last": 1791186855000,
+   "notes": [
+    "Received from trading account"
+   ]
+  }
+ },
+ "account_pages": 56
+}
