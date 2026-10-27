@@ -1,0 +1,25 @@
+# patches/ 폴더에 .patch 파일이 올라오면 자동으로 적용하고 패치 파일은 지움
+# (사이트 설정의 [패치 올리기] 버튼, 또는 GitHub 웹에서 patches/ 폴더에 업로드)
+name: apply-patch
+
+on:
+  push:
+    paths: ["patches/*.patch"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-patch
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 패치 적용
+        run: bash scripts/apply_patches.sh
