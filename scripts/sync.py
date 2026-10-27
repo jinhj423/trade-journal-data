@@ -36,6 +36,7 @@ EQUITY_FILE = DATA / "equity.json"
 NOTES_FILE = DATA / "notes.json"
 STATUS_FILE = DATA / "status.json"
 REBATES_FILE = DATA / "rebates.json"
+FX_FILE = DATA / "fx.json"
 
 KST = dt.timezone(dt.timedelta(hours=9))
 UA = "trade-journal-sync/2.0"
@@ -379,6 +380,24 @@ def fill_derived(t, prev):
     return t
 
 
+def fetch_fx():
+    """원화 환산용 USDT 시세. 업비트 KRW-USDT 우선, 안 되면 달러 환율로 대신."""
+    srcs = [
+        ("업비트 USDT", "https://api.upbit.com/v1/ticker?markets=KRW-USDT", lambda j: j[0]["trade_price"]),
+        ("달러 환율", "https://open.er-api.com/v6/latest/USD", lambda j: j["rates"]["KRW"]),
+    ]
+    for name, url, pick in srcs:
+        try:
+            status, body = http_get_json(url, {"Accept": "application/json"}, timeout=10)
+            if status == 200:
+                v = float(pick(body))
+                if 500 < v < 5000:
+                    return {"usdt_krw": round(v, 1), "src": name, "ts": int(time.time() * 1000)}
+        except Exception as e:  # 환율은 부가 정보라 실패해도 수집은 계속
+            print(f"[환율] {name} 실패: {e}")
+    return None
+
+
 def main():
     adapters = [cls() for cls in (OKX, Bitget) if cls.enabled()]
     if not adapters:
@@ -447,6 +466,13 @@ def main():
     changed |= dump_json(EQUITY_FILE, equity)
     changed |= dump_json(STATUS_FILE, status)
     changed |= changed_reb
+    fx = fetch_fx()
+    if fx:
+        old = load_json(FX_FILE, {})
+        # 1원 미만 흔들림이나 10분 안 재조회로는 커밋하지 않음
+        if abs((old.get("usdt_krw") or 0) - fx["usdt_krw"]) >= 1 or fx["ts"] - (old.get("ts") or 0) > 6 * 3600 * 1000:
+            changed |= dump_json(FX_FILE, fx)
+        print(f"[환율] 1 USDT = {fx['usdt_krw']}원 ({fx['src']})")
     if not NOTES_FILE.exists():
         changed |= dump_json(NOTES_FILE, {})
     print(f"[완료] v{VERSION} 총 {len(trades)}건 / 변경 {'있음' if changed else '없음'}")

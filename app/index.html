@@ -76,6 +76,9 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--ditto)}
 .btn.ditto{background:var(--ditto);color:#000}
 .btn:disabled{opacity:.45;cursor:default}
 .btn .ic{display:none;width:18px;height:18px}
+.krw{display:block;font-size:13px;font-weight:500;color:var(--text-2);font-family:var(--num);font-variant-numeric:tabular-nums;letter-spacing:0}
+.ov .krw{font-size:15px;margin:-2px 0 6px}
+.krw.in{display:inline;margin-left:6px}
 .viewtag{font-size:12px;font-weight:600;color:var(--ditto);background:var(--ditto-wash);border-radius:999px;padding:4px 10px;white-space:nowrap}
 body.view #btnSync,body.view #btnSettings,body.view #dSave,body.view #dDoneWrap{display:none!important}
 body.view .chip{cursor:default}
@@ -479,6 +482,8 @@ label.btn{cursor:pointer}
     <div class="spane" data-p="look">
       <div class="f"><label for="sUpdown">손익 색</label>
         <select id="sUpdown"><option value="kr">수익 빨강, 손실 파랑</option><option value="intl">수익 파랑, 손실 빨강</option></select></div>
+      <div class="f"><label class="check"><input type="checkbox" id="sKrw"> 원화 금액 함께 표시 (≈)</label>
+        <div class="help" id="sKrwHelp">수집할 때 받아 둔 업비트 USDT 시세로 환산한 대략값이에요.</div></div>
       <div class="f"><label class="check"><input type="checkbox" id="sRebate"> 손익에 수수료 페이백 포함</label>
         <div class="help">거래소에서 들어온 수수료 페이백을 실현손익·캘린더·곡선에 더해서 보여줘요.</div></div>
       <div class="f"><label for="sReasons">진입 근거 항목</label><textarea id="sReasons" rows="4"></textarea></div>
@@ -515,7 +520,7 @@ var TJSeal=(()=>{var M1=Object.create;var kf=Object.defineProperty;var T1=Object
 const DEFAULT_REASONS = ["지표","스캐너","작도","기타"];
 const DEFAULT_TAGS = ["손절 미준수","근거 없는 진입","추격 진입","조기 익절","원칙 밖 추가매수","과한 레버리지·비중","보복 매매","혼조 구간 진입"];
 const CLOSE_TYPE = {"1":"부분청산","2":"전체청산","3":"강제청산","4":"부분 강제청산","5":"ADL","6":"ADL"};
-const APP_VERSION = "3.7";
+const APP_VERSION = "3.9";
 const EXCHANGES = {
   okx: { name:"OKX", url:"https://www.okx.com/account/my-api",
     fields:[["API Key","OKX_API_KEY"],["Secret Key","OKX_SECRET_KEY"],["Passphrase","OKX_PASSPHRASE"]],
@@ -625,8 +630,8 @@ async function loadAll(){
   if(VIEW){
     document.body.classList.add("view"); $("#viewTag").hidden = false; $("#sample").hidden = true;
     try{
-      const [tr, eq, st, nt, rb] = await Promise.all([rawGet("data/trades.json"), rawGet("data/equity.json"), rawGet("data/status.json"), rawGet("data/notes.json"), rawGet("data/rebates.json")]);
-      S.rebates = flatRebates(rb);
+      const [tr, eq, st, nt, rb, fx] = await Promise.all([rawGet("data/trades.json"), rawGet("data/equity.json"), rawGet("data/status.json"), rawGet("data/notes.json"), rawGet("data/rebates.json"), rawGet("data/fx.json").catch(()=>null)]);
+      S.rebates = flatRebates(rb); S.fx = fx;
       if(!tr) throw new Error("이 매매일지는 지금 공개되어 있지 않아요.");
       S.allTrades = tr.trades||[]; S.equity = eq||{days:{}}; S.status = st||{}; S.notes = nt||{}; S.live = true;
       const fromStatus = Object.keys(S.status);
@@ -640,11 +645,12 @@ async function loadAll(){
     }
   } else if(isLive()){
     try{
-      const [tr, eq, st, nt, rb] = await Promise.all([ghRaw("data/trades.json"), ghRaw("data/equity.json"), ghRaw("data/status.json"), ghNotes(), ghRaw("data/rebates.json").catch(()=>null)]);
-      S.rebates = flatRebates(rb);
+      const [tr, eq, st, nt, rb, fx] = await Promise.all([ghRaw("data/trades.json"), ghRaw("data/equity.json"), ghRaw("data/status.json"), ghNotes(), ghRaw("data/rebates.json").catch(()=>null), ghRaw("data/fx.json").catch(()=>null)]);
+      S.rebates = flatRebates(rb); S.fx = fx;
       S.allTrades = ((tr && tr.trades) || []); S.equity = eq || {days:{}}; S.status = st || {}; S.notes = nt.data || {}; S.live = true;
       await loadConnected();
       S.trades = S.allTrades.filter(t=>S.connected.has(exOf(t)));
+      applySavedView();
       $("#sample").hidden = true;
       refreshRun();
     }catch(e){
@@ -676,6 +682,16 @@ async function loadConnected(){
 }
 /* 수수료 페이백: 거래소에서 들어온 'Fee rebate' 입금 (매매 건별이 아니라 시각별 입금) */
 function flatRebates(rb){ const out=[]; for(const [ex,list] of Object.entries(rb||{})) for(const r of list||[]) out.push({ex, ts:r.ts, amt:r.amt}); return out.sort((a,b)=>a.ts-b.ts); }
+/* 원화 환산: 수집 때 받아둔 USDT 시세(업비트) 기준, '≈'로 대략값 표시 */
+const krwOn = () => cfg.krw !== false;
+const fxRate = () => (S.fx && S.fx.usdt_krw) || null;
+function krw(v, signed=true){
+  const r = fxRate(); if(!krwOn() || !r || v==null || !isFinite(v)) return "";
+  const w = Math.round(v*r/100)*100, a = Math.abs(w).toLocaleString("ko-KR");
+  return `≈ ${signed ? (w>0?"+":w<0?"−":"") : ""}${a}원`;
+}
+const fxTitle = () => S.fx ? `1 USDT = ${S.fx.usdt_krw.toLocaleString("ko-KR")}원 (${S.fx.src}, ${fmtDT(S.fx.ts)} 기준)` : "";
+const kr = (v, cls="krw") => { const t = krw(v); return t ? `<span class="${cls}" title="${esc(fxTitle())}">${t}</span>` : ""; };
 const rebOn = () => cfg.rebateIn !== false;                                    // 손익에 페이백 포함 (기본 켬)
 const rebExact = () => S.dir==="all" && S.sym==="all" && S.reason==="all";     // 종목·방향·근거로 거르면 페이백은 수수료 비율로 추정
 function rebIn(start, end=Infinity){ return S.rebates.filter(r=>S.connected.has(r.ex) && (S.ex==="all"||r.ex===S.ex) && r.ts>=start && r.ts<end); }
@@ -825,7 +841,27 @@ function buildFilters(){
   more.innerHTML = `<option value="">그 외 ${rest.length}종목</option>` + rest.map(x=>`<option value="${esc(x)}">${esc(x)}  ${cnt.get(x)}건${isNew(x)?", 새 종목":""}</option>`).join("");
   if(S.sym!=="all" && !syms.includes(S.sym)) S.sym = "all";
 }
+/* 보는 기간을 저장소에 저장해서 PC·폰이 같은 기간으로 열리게 (주인만, 1.5초 모아서 저장) */
+let viewSaveT=null, viewSaved=null;
+const viewNow = () => ({period:S.period, from:S.from||"", to:S.to||""});
+function applySavedView(){
+  if(S.viewApplied) return; S.viewApplied = true;
+  const v = S.notes.__settings && S.notes.__settings.view;
+  if(v && v.period){ S.period=v.period; S.from=v.from||""; S.to=v.to||""; }
+  viewSaved = JSON.stringify(viewNow());
+}
+function maybeSaveView(){
+  if(!S.live || VIEW || !S.viewApplied) return;
+  const cur = JSON.stringify(viewNow()); if(cur===viewSaved) return;
+  clearTimeout(viewSaveT);
+  viewSaveT = setTimeout(async ()=>{
+    const v = viewNow();
+    try{ S.notes = await ghSaveNotes(d=>{ d.__settings={...(d.__settings||{}), view:v}; }, "설정: 보는 기간"); viewSaved = JSON.stringify(v); }
+    catch(e){ /* 다음 변경 때 다시 시도 */ }
+  }, 1500);
+}
 function render(){
+  maybeSaveView();
   $$("#fPeriod button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.v===S.period));
   $$("#fDir button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.v===S.dir));
   $$("#fEx button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.v===S.ex));
@@ -887,6 +923,7 @@ function renderDash(){
     <section class="panel ov">
       <div class="lbl">실현손익 <i>${periodName()}, 수수료·펀딩비${rebOn()?"·페이백":""} 포함</i></div>
       <div class="big ${tone(s.net)}">${fmtS(s.net)}<small>USDT</small></div>
+      ${kr(s.net)}
       <div class="sub">${subParts.join(", ")}</div>
       <div class="chart" id="eq"></div>
       <div class="dd-cap"><span>고점 대비 낙폭</span><span class="n">최대 ${fmtS(s.mdd)}${s.mddPct!=null?` (${fmtPct(s.mddPct)})`:""}</span></div>
@@ -897,12 +934,12 @@ function renderDash(){
       <dl class="kvl">
         <div><dt title="손익 0인 매매는 제외">승률</dt><dd>${s.winRate!=null?(s.winRate*100).toFixed(1)+"%":"–"}<small>${s.wins}승 ${s.losses}패</small></dd></div>
         <div><dt title="평균 수익 ÷ 평균 손실">손익비</dt><dd>${s.payoff!=null?s.payoff.toFixed(2):"–"}<small class="n">평균 ${fmtS(s.avgWin,1)} / ${fmtS(s.avgLoss,1)}</small></dd></div>
-        <div><dt title="한 건당 평균 실현손익. 0보다 커야 길게 봐서 남아요">건당 기대값</dt><dd class="${tone(s.exp)}">${fmtS(s.exp)}<small>증거금 대비 ${fmtPct(s.expR)}</small></dd></div>
+        <div><dt title="한 건당 평균 실현손익. 0보다 커야 길게 봐서 남아요">건당 기대값</dt><dd class="${tone(s.exp)}">${fmtS(s.exp)}<small>${krw(s.exp)||"&nbsp;"}</small><small>증거금 대비 ${fmtPct(s.expR)}</small></dd></div>
         <div><dt title="총수익 ÷ 총손실. 1.5 이상이면 양호">Profit Factor</dt><dd>${pf}<small>번 돈 ${fmtN(s.gw,0)}, 잃은 돈 ${fmtN(Math.abs(s.gl),0)}</small></dd></div>
         <div><dt>최장 연속</dt><dd>${s.maxW}연승 ${s.maxL}연패<small>${s.cur||"&nbsp;"}</small></dd></div>
         <div><dt>평균 보유</dt><dd>${fmtDur(s.hold)}</dd></div>
-        <div><dt title="거래소에서 돌려받은 수수료. 매매 건별이 아니라 입금된 시각 기준">수수료 페이백</dt><dd class="${tone(s.rebate)}">${s.rebate?fmtS(s.rebate):"–"}<small>${s.tradeFees? `낸 수수료 ${fmtN(s.tradeFees,1)}의 ${Math.round(s.rebate/s.tradeFees*100)}%`:"&nbsp;"}${s.rebEst?", 추정":""}</small></dd></div>
-        <div><dt title="거래 수수료와 펀딩비 합계">수수료·펀딩비</dt><dd class="${tone(s.fees)}">${fmtS(s.fees,1)}<small>${feeShare||"&nbsp;"}</small></dd></div>
+        <div><dt title="거래소에서 돌려받은 수수료. 매매 건별이 아니라 입금된 시각 기준">수수료 페이백</dt><dd class="${tone(s.rebate)}">${s.rebate?fmtS(s.rebate):"–"}${s.rebate?`<small>${krw(s.rebate)}</small>`:""}<small>${s.tradeFees? `낸 수수료 ${fmtN(s.tradeFees,1)}의 ${Math.round(s.rebate/s.tradeFees*100)}%`:"&nbsp;"}${s.rebEst?", 추정":""}</small></dd></div>
+        <div><dt title="거래 수수료와 펀딩비 합계">수수료·펀딩비</dt><dd class="${tone(s.fees)}">${fmtS(s.fees,1)}<small>${krw(s.fees)||"&nbsp;"}</small><small>${feeShare||"&nbsp;"}</small></dd></div>
         <div><dt>복기</dt><dd>${reviewed} / ${s.n}<small><button class="textbtn" id="goUnrev">${s.n-reviewed?`안 한 매매 ${s.n-reviewed}건 보기`:"모두 복기했어요"}</button></small></dd></div>
       </dl>
     </section>
@@ -946,7 +983,7 @@ function symTable(t){
 function bestWorst(s){
   const one = (what, x) => x ? `<button class="bw" data-trade="${esc(x.id)}">
     <span><span class="what">${what}</span><br><span class="sym">${esc(baseOf(x))}</span> <span class="side ${x.direction}">${dirTxt(x.direction)} ${levTxt(x)}</span><br><span class="meta n">${fmtDT(x.uTime)}, ${fmtDur(x.uTime-x.cTime)} 보유</span></span>
-    <span class="r"><span class="amt n ${tone(x.realizedPnl)}">${fmtS(x.realizedPnl)}</span><br><span class="meta n">${fmtPct(x.pnlRatio)}</span></span></button>` : "";
+    <span class="r"><span class="amt n ${tone(x.realizedPnl)}">${fmtS(x.realizedPnl)}</span><br><span class="meta n">${fmtPct(x.pnlRatio)}${krw(x.realizedPnl)?", "+krw(x.realizedPnl):""}</span></span></button>` : "";
   return one("가장 크게 번 매매", s.best) + (s.worst && s.worst.realizedPnl<0 ? one("가장 크게 잃은 매매", s.worst) : "");
 }
 function reasonTable(t){
@@ -1019,7 +1056,7 @@ function drawEquity(s, hOverride){
     let a=0,b=xs.length-1; while(b-a>1){ const m=(a+b)>>1; if(xs[m]<mx) a=m; else b=m; }
     const i=Math.abs(xs[a]-mx)<=Math.abs(xs[b]-mx)?a:b, p=pts[i];
     hv.style.display=""; dl.style.display=""; [hl,dl].forEach(l=>{l.setAttribute("x1",xs[i]); l.setAttribute("x2",xs[i]);}); hc.setAttribute("cx",xs[i]); hc.setAttribute("cy",Y(p.y));
-    tip.innerHTML = p.reb ? `<b>수수료 페이백</b> <span class="n up">${fmtS(p.reb.amt,4)}</span><br><span class="mid n">${fmtDT(p.reb.ts)}</span><br>누적 <b class="n">${fmtS(p.y)}</b>` : p.tr ? `<b>${esc(baseOf(p.tr))}</b> <span class="side ${p.tr.direction}">${dirTxt(p.tr.direction)}</span> <span class="n ${tone(p.tr.realizedPnl)}">${fmtS(p.tr.realizedPnl)}</span><br><span class="mid n">${fmtDT(p.tr.uTime)}</span><br>누적 <b class="n">${fmtS(p.y)}</b>` : `<span class="mid">기간 시작</span>`;
+    tip.innerHTML = p.reb ? `<b>수수료 페이백</b> <span class="n up">${fmtS(p.reb.amt,4)}</span><br><span class="mid n">${fmtDT(p.reb.ts)}</span><br>누적 <b class="n">${fmtS(p.y)}</b>` : p.tr ? `<b>${esc(baseOf(p.tr))}</b> <span class="side ${p.tr.direction}">${dirTxt(p.tr.direction)}</span> <span class="n ${tone(p.tr.realizedPnl)}">${fmtS(p.tr.realizedPnl)}</span><br><span class="mid n">${fmtDT(p.tr.uTime)}</span><br>누적 <b class="n">${fmtS(p.y)}</b>${krw(p.y)?` <span class="mid n">${krw(p.y)}</span>`:""}` : `<span class="mid">기간 시작</span>`;
     tip.style.left=Math.min(Math.max(xs[i],80),W-80)+"px"; tip.style.top=Y(p.y)+"px"; tip.classList.add("show");
   };
   const leave = () => { hv.style.display="none"; dl.style.display="none"; tip.classList.remove("show"); };
@@ -1070,7 +1107,7 @@ function renderCal(){
     <button class="navbtn" id="cNext" aria-label="다음 달">${ARROW("M5 2l5 5-5 5")}</button>
     <button class="btn" id="cNow" style="margin-left:4px">이번 달</button>
     <div class="cal-sum n">
-      <div>월 손익<b class="${tone(tot)}">${fmtS(tot)}${mPct!=null?`<small>${fmtPct(mPct,2)}</small>`:""}</b></div>
+      <div>월 손익<b class="${tone(tot)}">${fmtS(tot)}${mPct!=null?`<small>${fmtPct(mPct,2)}</small>`:""}</b>${kr(tot)}</div>
       <div>수익일 / 손실일<b>${act.filter(x=>x.pnl>0).length} / ${act.filter(x=>x.pnl<0).length}</b></div>
       ${best&&best.pnl>0?`<div>최고의 날<b class="up">${fmtS(best.pnl,1)} <small class="dim">${best.d}일</small></b></div>`:""}
       ${worst&&worst.pnl<0?`<div>최악의 날<b class="down">${fmtS(worst.pnl,1)} <small class="dim">${worst.d}일</small></b></div>`:""}
@@ -1109,7 +1146,7 @@ function renderList(){
   <div class="list-top">
     ${S.listDay?`<span class="pillx">${+m}월 ${+d}일 매매<button id="clrDay" aria-label="날짜 필터 해제">${ARROW("M3 3l8 8M11 3l-8 8")}</button></span>`:""}
     <label class="check"><input type="checkbox" id="unrev" ${S.unreviewed?"checked":""}> 복기 안 한 매매만</label>
-    <span class="sum n">${a.length}건, 합계 <b class="${tone(s.total)}">${fmtS(s.total)}</b> USDT</span>
+    <span class="sum n">${a.length}건, 합계 <b class="${tone(s.total)}">${fmtS(s.total)}</b> USDT${kr(s.total,"krw in")}</span>
   </div>
   <div class="row h"><span>청산</span><span>종목</span><span>방향</span><span class="r">진입가</span><span class="r">청산가</span><span class="r">규모</span><span class="r">실현손익</span><span class="r">수익률</span><span class="r">보유</span><span class="r">복기</span></div>
   ${shown.length ? shown.map(x=>rowHtml(x,multi)).join("") : `<div class="empty">${S.unreviewed?"복기할 매매가 없어요.":"이 조건에 맞는 매매가 없어요."}</div>`}
@@ -1146,7 +1183,7 @@ function openDrawer(id, list){
   const n = S.notes[id]||{};
   $("#dSub").textContent = `${EX_NAME[exOf(x)]||exOf(x)} ${x.instId}, ${CLOSE_TYPE[x.type]||""}`;
   $("#dTitle").innerHTML = `${esc(baseOf(x))} <span class="side ${x.direction}">${dirTxt(x.direction)} ${levTxt(x)}</span>`;
-  $("#dAmt").innerHTML = `<span class="${tone(x.realizedPnl)}">${fmtS(x.realizedPnl)}</span><small class="${tone(x.pnlRatio)}">${fmtPct(x.pnlRatio,2)}</small>`;
+  $("#dAmt").innerHTML = `<span class="${tone(x.realizedPnl)}">${fmtS(x.realizedPnl)}</span><small class="${tone(x.pnlRatio)}">${fmtPct(x.pnlRatio,2)}</small>${kr(x.realizedPnl)}`;
   const unit = x.posUnit==="coin" ? esc(baseOf(x)) : "계약";
   const move = (x.openAvgPx&&x.closeAvgPx) ? (x.closeAvgPx-x.openAvgPx)/x.openAvgPx*(x.direction==="short"?-1:1) : null;
   const f = [
@@ -1214,7 +1251,7 @@ function setPane(p){
 }
 function openSettings(pane){
   $("#sOwner").value=cfg.owner||""; $("#sRepo").value=cfg.repo||"trade-journal-data"; $("#sBranch").value=cfg.branch||"main"; $("#sWf").value=cfg.wf||"sync.yml";
-  $("#sToken").value=cfg.token||""; $("#sUpdown").value=cfg.updown||"kr"; $("#sTags").value=tags().join("\n"); $("#sReasons").value=reasons().join("\n"); $("#sRebate").checked = rebOn(); $("#sResult").innerHTML="";
+  $("#sToken").value=cfg.token||""; $("#sUpdown").value=cfg.updown||"kr"; $("#sTags").value=tags().join("\n"); $("#sReasons").value=reasons().join("\n"); $("#sRebate").checked = rebOn(); $("#sKrw").checked = krwOn(); if(S.fx) $("#sKrwHelp").textContent = `수집할 때 받아 둔 시세로 환산한 대략값이에요. 지금 기준: ${fxTitle()}`; $("#sResult").innerHTML="";
   setPane(typeof pane==="string" ? pane : (isLive() ? "ex" : "gh"));
   $("#settings").classList.add("show");
 }
@@ -1243,7 +1280,7 @@ async function saveLook(){
   const lines = id => $(id).value.split("\n").map(s=>s.trim()).filter(Boolean);
   const tagsNew=lines("#sTags"), reasonsNew=lines("#sReasons");
   const changed = JSON.stringify(tagsNew)!==JSON.stringify(tags()) || JSON.stringify(reasonsNew)!==JSON.stringify(reasons());
-  cfg={...cfg, updown:$("#sUpdown").value, tags:tagsNew, reasons:reasonsNew, rebateIn:$("#sRebate").checked}; saveCfg(cfg); applyLook();
+  cfg={...cfg, updown:$("#sUpdown").value, tags:tagsNew, reasons:reasonsNew, rebateIn:$("#sRebate").checked, krw:$("#sKrw").checked}; saveCfg(cfg); applyLook();
   const upd = d => { d.__settings={...(d.__settings||{}), mistakeTags:tagsNew, reasonTags:reasonsNew}; };
   if(S.live && changed){ try{ S.notes = await ghSaveNotes(upd, "설정: 진입 근거·실수 항목"); }catch(e){ toast("항목을 저장하지 못했어요: "+e.message,5000); return; } }
   else if(!S.live) upd(S.notes);
@@ -1483,7 +1520,7 @@ function makeDemo(){
   }
   // 샘플 페이백: 낸 수수료의 20%가 몇 시간 뒤 입금
   const rebates = trades.filter(x=>x.status==="closed").map(x=>({ex:"okx", ts:Math.min(now-30000, x.uTime+3*3600000), amt:+(tradeFee(x)*0.2).toFixed(4)})).sort((a,b)=>a.ts-b.ts);
-  return {trades, equity:{days}, notes, status:{okx:{ok:true}}, rebates};
+  return {trades, equity:{days}, notes, status:{okx:{ok:true}}, rebates, fx:{usdt_krw:1395, src:"샘플 시세", ts:now}};
 }
 
 /* 이벤트 */
