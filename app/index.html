@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#000000">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://api.github.com 'self'; img-src 'self' data:; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://api.github.com https://raw.githubusercontent.com 'self'; img-src 'self' data:; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <title>매매일지</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon-32.png" sizes="32x32">
@@ -76,6 +76,12 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--ditto)}
 .btn.ditto{background:var(--ditto);color:#000}
 .btn:disabled{opacity:.45;cursor:default}
 .btn .ic{display:none;width:18px;height:18px}
+.viewtag{font-size:12px;font-weight:600;color:var(--ditto);background:var(--ditto-wash);border-radius:999px;padding:4px 10px;white-space:nowrap}
+body.view #btnSync,body.view #btnSettings,body.view #dSave,body.view #dDoneWrap{display:none!important}
+body.view .chip{cursor:default}
+body.view .drawer textarea{background:transparent;border-color:var(--line);resize:none}
+.sharelink{display:flex;gap:8px;margin:4px 0 6px}
+.sharelink input{font-family:var(--num);font-size:13px}
 .btn.spin .ic{animation:rot 1s linear infinite}
 @keyframes rot{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.btn.spin .ic{animation:none}}
@@ -355,6 +361,7 @@ label.btn{cursor:pointer}
       <button role="tab" data-tab="list" aria-selected="false">매매 기록</button>
     </nav>
     <div class="feeds" id="feeds"></div>
+    <span class="viewtag" id="viewTag" hidden>보기 전용</span>
     <button class="btn hb" id="btnSync" aria-label="동기화"><svg class="ic" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M16.5 10a6.5 6.5 0 0 1-11.6 4"/><path d="M3.5 10a6.5 6.5 0 0 1 11.6-4"/><path d="M15.5 2.5v3.8h-3.8"/><path d="M4.5 17.5v-3.8h3.8"/></svg><span class="lb">동기화</span></button>
     <button class="btn hb" id="btnSettings" aria-label="설정"><svg class="ic" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M3 5.5h8M15 5.5h2M3 14.5h2M9 14.5h8"/><circle cx="13" cy="5.5" r="2"/><circle cx="7" cy="14.5" r="2"/></svg><span class="lb">설정</span></button>
   </header>
@@ -393,7 +400,7 @@ label.btn{cursor:pointer}
     <div class="chips" id="dChips"></div>
     <div class="d-sec">복기</div>
     <textarea id="dMemo" placeholder="왜 들어갔는지, 계획과 실제가 어떻게 달랐는지, 다음엔 뭘 바꿀지"></textarea>
-    <label class="check" style="margin-top:14px"><input type="checkbox" id="dDone"> 복기 끝</label>
+    <label class="check" id="dDoneWrap" style="margin-top:14px"><input type="checkbox" id="dDone"> 복기 끝</label>
   </div>
   <div class="d-foot">
     <span class="st" id="dState"></span>
@@ -411,6 +418,7 @@ label.btn{cursor:pointer}
       <button role="tab" data-p="ex">거래소 연결</button>
       <button role="tab" data-p="gh">GitHub 연결</button>
       <button role="tab" data-p="look">화면·실수 항목</button>
+      <button role="tab" data-p="share">공유</button>
       <button role="tab" data-p="app">앱 설치</button>
       <button role="tab" data-p="up">업데이트</button>
     </nav>
@@ -452,6 +460,7 @@ label.btn{cursor:pointer}
       <div class="acts"><button class="btn main" id="lSave">저장</button></div>
     </div>
 
+    <div class="spane" data-p="share" id="paneShare"></div>
     <div class="spane" data-p="app" id="paneApp"></div>
     <div class="spane" data-p="up" id="paneUp"></div>
   </div>
@@ -478,7 +487,7 @@ var TJSeal=(()=>{var M1=Object.create;var kf=Object.defineProperty;var T1=Object
 "use strict";
 const DEFAULT_TAGS = ["손절 미준수","근거 없는 진입","추격 진입","조기 익절","원칙 밖 추가매수","과한 레버리지·비중","보복 매매","혼조 구간 진입"];
 const CLOSE_TYPE = {"1":"부분청산","2":"전체청산","3":"강제청산","4":"부분 강제청산","5":"ADL","6":"ADL"};
-const APP_VERSION = "3.3";
+const APP_VERSION = "3.4";
 const EXCHANGES = {
   okx: { name:"OKX", url:"https://www.okx.com/account/my-api",
     fields:[["API Key","OKX_API_KEY"],["Secret Key","OKX_SECRET_KEY"],["Passphrase","OKX_PASSPHRASE"]],
@@ -509,6 +518,12 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt
 function loadCfg(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)) || {}; }catch{ return {}; } }
 function saveCfg(c){ try{ localStorage.setItem(LS_KEY, JSON.stringify(c)); }catch{} }
 let cfg = loadCfg();
+// 보기 전용: 공개된 데이터 저장소를 토큰 없이 읽음. 주소에 ?view=아이디/저장소 가 붙으면 이 모드
+const VIEW = (()=>{
+  const v = window.__TJ_VIEW || new URLSearchParams(location.search).get("view");
+  const m = v && String(v).match(/^([\w.-]+)\/([\w.-]+)$/);
+  return m ? {owner:m[1], repo:m[2], branch:"main"} : null;
+})();
 const isLive = () => !!(cfg.owner && cfg.repo && cfg.token);
 
 const S = { trades:[], allTrades:[], connected:new Set(), secretsOk:false, exMsg:{}, equity:{days:{}}, notes:{}, status:{}, live:false,
@@ -550,6 +565,12 @@ async function ghRaw(file){
   if(!r.ok) throw new Error(`${file}을 읽지 못했어요 (HTTP ${r.status})`);
   return JSON.parse(await r.text());
 }
+async function rawGet(file){
+  const r = await fetch(`https://raw.githubusercontent.com/${encodeURIComponent(VIEW.owner)}/${encodeURIComponent(VIEW.repo)}/${VIEW.branch}/${file}?t=${Date.now()}`, {cache:"no-store"});
+  if(r.status===404) return null;
+  if(!r.ok) throw new Error(`불러오지 못했어요 (HTTP ${r.status})`);
+  return JSON.parse(await r.text());
+}
 async function ghNotes(){
   const r = await gh(`${repoPath()}/contents/data/notes.json?ref=${encodeURIComponent(branch())}`);
   if(r.status===404) return {data:{}, sha:null};
@@ -573,7 +594,22 @@ async function ghSaveNotes(mutate, message){
 /* 로드 */
 async function loadAll(){
   $("#view").innerHTML = '<div class="loading">불러오는 중</div>';
-  if(isLive()){
+  if(VIEW){
+    document.body.classList.add("view"); $("#viewTag").hidden = false; $("#sample").hidden = true;
+    try{
+      const [tr, eq, st, nt] = await Promise.all([rawGet("data/trades.json"), rawGet("data/equity.json"), rawGet("data/status.json"), rawGet("data/notes.json")]);
+      if(!tr) throw new Error("이 매매일지는 지금 공개되어 있지 않아요.");
+      S.allTrades = tr.trades||[]; S.equity = eq||{days:{}}; S.status = st||{}; S.notes = nt||{}; S.live = true;
+      const fromStatus = Object.keys(S.status);
+      S.connected = new Set(fromStatus.length ? fromStatus : S.allTrades.map(exOf));
+      S.trades = S.allTrades.filter(t=>S.connected.has(exOf(t)));
+      // 마지막 수집 시각: 데이터 폴더의 마지막 커밋 (토큰 없이 조회)
+      fetch(`https://api.github.com/repos/${encodeURIComponent(VIEW.owner)}/${encodeURIComponent(VIEW.repo)}/commits?path=data&per_page=1`, {cache:"no-store"})
+        .then(r=>r.ok?r.json():null).then(j=>{ if(j&&j[0]){ S.run={status:"completed",conclusion:"success",updated_at:j[0].commit.committer.date}; renderFeeds(); } }).catch(()=>{});
+    }catch(e){
+      $("#view").innerHTML = `<div class="onb"><h2>볼 수 없어요</h2><p>${esc(e.message)}</p></div>`; $(".filters").hidden = true; return;
+    }
+  } else if(isLive()){
     try{
       const [tr, eq, st, nt] = await Promise.all([ghRaw("data/trades.json"), ghRaw("data/equity.json"), ghRaw("data/status.json"), ghNotes()]);
       S.allTrades = ((tr && tr.trades) || []); S.equity = eq || {days:{}}; S.status = st || {}; S.notes = nt.data || {}; S.live = true;
@@ -1024,10 +1060,12 @@ function openDrawer(id, list){
   ];
   $("#dFacts").innerHTML = f.map(([k,v])=>`<div><dt>${k}</dt><dd>${v}</dd></div>`).join("") + (x.leverEst?`<div style="grid-column:1/-1;border:0"><dt style="font-size:12px">* 이 거래소는 기록에 배율이 없어 현재 설정 배율로 추정했어요</dt></div>`:"");
   const mis = new Set(n.mistakes||[]), all = [...tags(), ...[...mis].filter(m=>!tags().includes(m))];
-  $("#dChips").innerHTML = all.map(t=>`<button class="chip" aria-pressed="${mis.has(t)}" data-tag="${esc(t)}">${esc(t)}</button>`).join("");
-  $$("#dChips .chip").forEach(c=>c.onclick=()=>{ c.setAttribute("aria-pressed", c.getAttribute("aria-pressed")!=="true"); markDirty(); });
+  const shown = VIEW ? all.filter(t=>mis.has(t)) : all;
+  $("#dChips").innerHTML = shown.length ? shown.map(t=>`<button class="chip" aria-pressed="${mis.has(t)}" data-tag="${esc(t)}" ${VIEW?"disabled":""}>${esc(t)}</button>`).join("") : `<span class="dim" style="font-size:13px">체크한 실수 없음</span>`;
+  if(!VIEW) $$("#dChips .chip").forEach(c=>c.onclick=()=>{ c.setAttribute("aria-pressed", c.getAttribute("aria-pressed")!=="true"); markDirty(); });
   $("#dMemo").value = n.memo||""; $("#dDone").checked = !!n.reviewed;
-  $("#dState").textContent = n.updated ? `${fmtDT(n.updated)} 저장` : (S.live ? "" : "샘플에선 새로고침하면 사라져요");
+  $("#dMemo").readOnly = !!VIEW; if(VIEW) $("#dMemo").placeholder = "작성한 복기가 없어요";
+  $("#dState").textContent = VIEW ? (n.reviewed ? "복기 끝" : "") : n.updated ? `${fmtDT(n.updated)} 저장` : (S.live ? "" : "샘플에선 새로고침하면 사라져요");
   const i = S.drawerList.findIndex(t=>t.id===id);
   $("#dPrev").disabled = i<=0; $("#dNext").disabled = i<0 || i>=S.drawerList.length-1;
   dirty=false; armedFlag=false; $("#dState").style.color="";
@@ -1066,7 +1104,7 @@ function applyLook(){ document.documentElement.dataset.updown = cfg.updown||"kr"
 function setPane(p){
   $$(".stabs button").forEach(b=>b.setAttribute("aria-selected", b.dataset.p===p));
   $$(".spane").forEach(el=>el.hidden = el.dataset.p!==p);
-  if(p==="ex") renderExPane(); if(p==="up") renderUpPane(); if(p==="app") renderAppPane();
+  if(p==="ex") renderExPane(); if(p==="up") renderUpPane(); if(p==="app") renderAppPane(); if(p==="share") renderSharePane();
 }
 function openSettings(pane){
   $("#sOwner").value=cfg.owner||""; $("#sRepo").value=cfg.repo||"trade-journal-data"; $("#sBranch").value=cfg.branch||"main"; $("#sWf").value=cfg.wf||"sync.yml";
@@ -1187,6 +1225,31 @@ async function disconnectExchange(id){
     S.connected.delete(id); S.exMsg[id] = {text:"연결을 해제했어요."};
     await loadAll(); renderExPane();
   }catch(e){ toast(e.message,5000); }
+}
+
+/* 공유 (보기 전용 링크) */
+async function renderSharePane(){
+  const box=$("#paneShare");
+  if(!S.live){ box.innerHTML = `<p class="lead">공유하려면 먼저 GitHub 연결이 필요해요.</p>`; return; }
+  box.innerHTML = `<p class="lead">확인 중</p>`;
+  let pub = null;
+  try{ const r = await gh(repoPath()); if(r.ok) pub = !(await r.json()).private; }catch{}
+  const base = location.origin + location.pathname;
+  const link = `${base}?view=${cfg.owner}/${cfg.repo}`;
+  const settingsUrl = `https://github.com/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/settings`;
+  const what = `<p class="note"><b style="color:var(--text)">공개되는 것</b>: 매매 기록과 손익 금액, 일별 계좌 자산, 복기 메모와 실수 체크, 수집 스크립트와 화면 코드.<br><b style="color:var(--text)">공개되지 않는 것</b>: 거래소 API 키(저장소 Secrets), GitHub 토큰. 보는 사람은 읽기만 할 수 있고 아무것도 바꿀 수 없어요.</p>`;
+  if(pub===true){
+    box.innerHTML = `<p class="lead">공개 중이에요. 이 링크를 아는 사람은 누구나 매매일지를 볼 수 있어요. 새 매매는 수집될 때마다 같은 링크에 반영돼요.</p>
+      <div class="sharelink"><input id="shareUrl" readonly value="${esc(link)}"><button class="btn ditto" id="copyShare">복사</button></div>
+      <p class="exmsg" id="shareMsg"></p>${what}
+      <p class="note"><b style="color:var(--text)">공유 멈추기</b>: <a class="textbtn" href="${settingsUrl}" target="_blank" rel="noopener noreferrer">저장소 설정</a> 맨 아래 Danger Zone → Change visibility → Make private. 그 즉시 링크로는 안 보여요.</p>`;
+    $("#copyShare").onclick = async ()=>{ const i=$("#shareUrl"); try{ await navigator.clipboard.writeText(i.value); $("#shareMsg").textContent="복사했어요"; }catch{ i.select(); $("#shareMsg").textContent="선택해 뒀어요. 길게 눌러 복사하세요."; } };
+  } else if(pub===false){
+    box.innerHTML = `<p class="lead">지금은 비공개라 나만 볼 수 있어요. 데이터 저장소를 Public으로 바꾸면 아래 링크로 누구나 볼 수 있어요.</p>
+      <ol class="steps"><li><a href="${settingsUrl}" target="_blank" rel="noopener noreferrer">저장소 설정</a>을 열어요.</li><li>맨 아래 <b>Danger Zone</b>에서 <b>Change visibility</b> → <b>Make public</b>을 눌러 확인해요.</li><li>돌아와서 아래 <b>다시 확인</b>을 누르면 공유 링크가 나와요.</li></ol>
+      ${what}<div class="acts" style="justify-content:flex-start"><button class="btn" id="reShare">다시 확인</button></div>`;
+    $("#reShare").onclick = renderSharePane;
+  } else box.innerHTML = `<p class="lead">저장소 상태를 확인하지 못했어요. 잠시 뒤 다시 열어주세요.</p>`;
 }
 
 /* 앱 설치 (홈 화면에 추가) */
@@ -1333,8 +1396,8 @@ document.addEventListener("keydown", e=>{
 });
 let rt; addEventListener("resize", ()=>{ clearTimeout(rt); rt=setTimeout(()=>{ buildFilters(); render(); },150); });
 addEventListener("beforeunload", e=>{ if(dirty){ e.preventDefault(); e.returnValue=""; } });
-setInterval(()=>{ if(S.live) refreshRun(); }, 120000);
-applyLook(); loadAll(); maybeInstallHint();
+setInterval(()=>{ if(S.live && !VIEW) refreshRun(); }, 120000);
+applyLook(); loadAll(); if(!VIEW) maybeInstallHint();
 </script>
 </body>
 </html>
