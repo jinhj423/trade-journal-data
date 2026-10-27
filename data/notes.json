@@ -78,8 +78,10 @@
   "reasons": [
    "지표"
   ],
-  "mistakes": [],
+  "mistakes": [
+   "조기 익절"
+  ],
   "reviewed": false,
-  "updated": 1793113189854
+  "updated": 1793113190799
  }
 }
