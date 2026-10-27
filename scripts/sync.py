@@ -35,6 +35,7 @@ TRADES_FILE = DATA / "trades.json"
 EQUITY_FILE = DATA / "equity.json"
 NOTES_FILE = DATA / "notes.json"
 STATUS_FILE = DATA / "status.json"
+REBATES_FILE = DATA / "rebates.json"
 
 KST = dt.timezone(dt.timedelta(hours=9))
 UA = "trade-journal-sync/2.0"
@@ -46,7 +47,7 @@ class ApiError(RuntimeError):
     pass
 
 
-VERSION = "3"
+VERSION = "3.6"
 try:
     _SECRETS = json.loads(os.environ.get("TJ_SECRETS") or "{}")
 except ValueError:
@@ -203,6 +204,26 @@ class OKX:
         bal = self.get("/api/v5/account/balance")
         return num(bal[0].get("totalEq")) if bal else None
 
+    def rebates(self, since_ms):
+        """수수료 페이백 입금 내역 (자금 계좌 내역 type 173, 메모 'Fee rebate'). since_ms 이후만."""
+        out, after, pages = [], None, 0
+        while pages < 100:
+            rows = self.get("/api/v5/asset/bills", {"type": "173", "limit": "100", "after": after})
+            pages += 1
+            if not rows:
+                break
+            for r in rows:
+                ts = int(r.get("ts") or 0)
+                if since_ms and ts < since_ms:
+                    continue
+                out.append({"id": r.get("billId"), "ts": ts, "amt": num(r.get("balChg")) or 0.0, "ccy": r.get("ccy", "")})
+            oldest = min(int(r.get("ts") or 0) for r in rows)
+            if (since_ms and oldest < since_ms) or len(rows) < 100:
+                break
+            after = str(oldest)
+            time.sleep(0.25)
+        return out
+
 
 # ═════════════════════════════ Bitget (클래식 계정, API v2) ═════════════════════════════
 class Bitget:
@@ -358,54 +379,6 @@ def fill_derived(t, prev):
     return t
 
 
-def okx_bill_survey(ad):
-    """수수료 페이백이 계좌에 어떤 형태로 들어오는지 확인용 (한 번만 실행, 종류·건수·합계만 기록)"""
-    out = {"account_types": {}, "account": {}, "funding": {}}
-    try:
-        for t in ad.get("/api/v5/account/subtypes") or []:
-            out["account_types"][t["type"]] = {"desc": t.get("typeDesc", ""),
-                                               "sub": {x["subType"]: x.get("subTypeDesc", "") for x in t.get("subTypeDetails", [])}}
-    except ApiError as e:
-        out["account_types_error"] = str(e)
-    after, pages = None, 0
-    while pages < 80:
-        try:
-            rows = ad.get("/api/v5/account/bills-archive", {"limit": "100", "after": after})
-        except ApiError as e:
-            out["account_error"] = str(e); break
-        pages += 1
-        if not rows: break
-        for r in rows:
-            k = f"{r.get('type')}/{r.get('subType')}/{r.get('ccy')}"
-            g = out["account"].setdefault(k, {"n": 0, "balChg": 0.0, "fee": 0.0, "first": None, "last": None})
-            g["n"] += 1; g["balChg"] += num(r.get("balChg")) or 0; g["fee"] += num(r.get("fee")) or 0
-            ts = int(r.get("ts") or 0); g["first"] = min(g["first"] or ts, ts); g["last"] = max(g["last"] or ts, ts)
-        if len(rows) < 100: break
-        after = rows[-1]["billId"]; time.sleep(0.45)
-    out["account_pages"] = pages
-    after, pages = None, 0
-    while pages < 30:
-        try:
-            rows = ad.get("/api/v5/asset/bills", {"limit": "100", "after": after})
-        except ApiError as e:
-            out["funding_error"] = str(e); break
-        pages += 1
-        if not rows: break
-        for r in rows:
-            k = f"{r.get('type')}/{r.get('ccy')}"
-            g = out["funding"].setdefault(k, {"n": 0, "balChg": 0.0, "first": None, "last": None, "notes": set()})
-            g["n"] += 1; g["balChg"] += num(r.get("balChg")) or 0
-            ts = int(r.get("ts") or 0); g["first"] = min(g["first"] or ts, ts); g["last"] = max(g["last"] or ts, ts)
-            if r.get("notes"): g["notes"].add(r["notes"][:40])
-        if len(rows) < 100: break
-        after = rows[-1]["ts"]; time.sleep(0.6)
-    for g in out["funding"].values(): g["notes"] = sorted(g["notes"])[:5]
-    for g in list(out["account"].values()) + list(out["funding"].values()):
-        g["balChg"] = round(g["balChg"], 6); g.get("fee") is not None and g.__setitem__("fee", round(g["fee"], 6))
-    dump_json(DATA / "bill_survey.json", out)
-    print("[조사] 계좌 내역 종류", len(out["account"]), "/ 자금 계좌 내역 종류", len(out["funding"]))
-
-
 def main():
     adapters = [cls() for cls in (OKX, Bitget) if cls.enabled()]
     if not adapters:
@@ -453,14 +426,27 @@ def main():
     else:
         equity["days"].pop(today, None)
 
+    # 수수료 페이백: 거래소별 입금 내역을 id로 중복 없이 누적
+    reb = load_json(REBATES_FILE, {})
     for ad in adapters:
-        if ad.name == "okx" and not (DATA / "bill_survey.json").exists():
-            okx_bill_survey(ad)
+        if not hasattr(ad, "rebates") or not status.get(ad.name, {}).get("ok"):
+            continue
+        have = {x["id"]: x for x in reb.get(ad.name, [])}
+        last = max((x["ts"] for x in have.values()), default=None)
+        try:
+            for x in ad.rebates((last - OVERLAP_MS) if last else None):
+                have[x["id"]] = x
+            reb[ad.name] = sorted(have.values(), key=lambda x: x["ts"])
+            print(f"[{ad.name}] 페이백 {len(reb[ad.name])}건 보관")
+        except ApiError as e:
+            print(f"[{ad.name}] 페이백 조회 실패: {e}")
+    changed_reb = dump_json(REBATES_FILE, reb) if reb else False
 
     trades = sorted(by_id.values(), key=lambda x: x["uTime"], reverse=True)
     changed = dump_json(TRADES_FILE, {"version": 2, "trades": trades})
     changed |= dump_json(EQUITY_FILE, equity)
     changed |= dump_json(STATUS_FILE, status)
+    changed |= changed_reb
     if not NOTES_FILE.exists():
         changed |= dump_json(NOTES_FILE, {})
     print(f"[완료] v{VERSION} 총 {len(trades)}건 / 변경 {'있음' if changed else '없음'}")

@@ -100,6 +100,13 @@ html{-webkit-tap-highlight-color:transparent}
 .chipset button:hover{color:var(--text)}
 .chipset button[aria-pressed="true"]{background:var(--raise);color:var(--text);font-weight:600}
 .filters select{width:auto;font-size:13px;height:30px;padding:0 26px 0 12px;border-radius:999px;color:var(--text-2)}
+.chipset .pick{display:inline-flex;align-items:center;gap:5px}
+.chipset .pick svg{width:13px;height:13px}
+.range{display:flex;align-items:center;gap:6px;margin-left:6px}
+.range input[type=date]{width:auto;height:30px;padding:0 10px;font-size:13px;border-radius:999px;font-family:var(--num);color:var(--text)}
+.range input[type=date]:disabled{opacity:.45}
+.range button{font-size:13px;font-weight:500;height:30px;padding:0 12px;border-radius:999px;color:var(--text-2);background:transparent;border:1px solid var(--line-2)}
+.range button[aria-pressed="true"]{background:var(--ditto-wash);color:var(--ditto);border-color:transparent;font-weight:600}
 .filters select.on{color:var(--text);font-weight:600}
 .newdot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--ditto);margin-left:5px;vertical-align:2px}
 
@@ -325,6 +332,8 @@ label.btn{cursor:pointer}
   #fSymMore{order:4}
   .chipset{flex-shrink:0}
   .chipset button{flex-shrink:0}
+  .range{width:100%;margin:0;order:1}
+  .range input[type=date]{flex:1;min-width:0;font-size:14px;padding:0 8px}
   .chipset + .chipset,.chipset + select{margin-left:0}
   .filters select{flex-shrink:0}
   .panel{padding:16px 14px;border-radius:10px}
@@ -376,7 +385,13 @@ label.btn{cursor:pointer}
 
   <div class="filters">
     <div class="chipset" id="fPeriod" role="group" aria-label="기간">
-      <button data-v="today">오늘</button><button data-v="7">7일</button><button data-v="30">30일</button><button data-v="90">90일</button><button data-v="month">이번 달</button><button data-v="ytd">올해</button><button data-v="all">전체</button>
+      <button data-v="today">오늘</button><button data-v="7">7일</button><button data-v="30">30일</button><button data-v="90">90일</button><button data-v="month">이번 달</button><button data-v="ytd">올해</button><button data-v="all">전체</button><button data-v="custom" class="pick"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3"/></svg>기간 지정</button>
+    </div>
+    <div class="range" id="fRange" hidden>
+      <input type="date" id="rFrom" aria-label="시작일">
+      <span class="dim">~</span>
+      <input type="date" id="rTo" aria-label="종료일">
+      <button id="rToday" aria-pressed="true">오늘까지</button>
     </div>
     <div class="chipset" id="fDir" role="group" aria-label="방향">
       <button data-v="all">롱·숏</button><button data-v="long">롱</button><button data-v="short">숏</button>
@@ -464,6 +479,8 @@ label.btn{cursor:pointer}
     <div class="spane" data-p="look">
       <div class="f"><label for="sUpdown">손익 색</label>
         <select id="sUpdown"><option value="kr">수익 빨강, 손실 파랑</option><option value="intl">수익 파랑, 손실 빨강</option></select></div>
+      <div class="f"><label class="check"><input type="checkbox" id="sRebate"> 손익에 수수료 페이백 포함</label>
+        <div class="help">거래소에서 들어온 수수료 페이백을 실현손익·캘린더·곡선에 더해서 보여줘요.</div></div>
       <div class="f"><label for="sReasons">진입 근거 항목</label><textarea id="sReasons" rows="4"></textarea></div>
       <div class="f"><label for="sTags">실수 항목</label><textarea id="sTags" rows="8"></textarea>
         <div class="help">한 줄에 하나. 저장소에 함께 저장돼서 PC와 폰에 똑같이 적용돼요.</div></div>
@@ -498,7 +515,7 @@ var TJSeal=(()=>{var M1=Object.create;var kf=Object.defineProperty;var T1=Object
 const DEFAULT_REASONS = ["지표","스캐너","작도","기타"];
 const DEFAULT_TAGS = ["손절 미준수","근거 없는 진입","추격 진입","조기 익절","원칙 밖 추가매수","과한 레버리지·비중","보복 매매","혼조 구간 진입"];
 const CLOSE_TYPE = {"1":"부분청산","2":"전체청산","3":"강제청산","4":"부분 강제청산","5":"ADL","6":"ADL"};
-const APP_VERSION = "3.5";
+const APP_VERSION = "3.7";
 const EXCHANGES = {
   okx: { name:"OKX", url:"https://www.okx.com/account/my-api",
     fields:[["API Key","OKX_API_KEY"],["Secret Key","OKX_SECRET_KEY"],["Passphrase","OKX_PASSPHRASE"]],
@@ -537,8 +554,8 @@ const VIEW = (()=>{
 })();
 const isLive = () => !!(cfg.owner && cfg.repo && cfg.token);
 
-const S = { reason:"all", trades:[], allTrades:[], connected:new Set(), secretsOk:false, exMsg:{}, equity:{days:{}}, notes:{}, status:{}, live:false,
-  period:"today", dir:"all", ex:"all", sym:"all", tab:"dash",
+const S = { rebates:[], reason:"all", trades:[], allTrades:[], connected:new Set(), secretsOk:false, exMsg:{}, equity:{days:{}}, notes:{}, status:{}, live:false,
+  period:"today", from:"", to:"", dir:"all", ex:"all", sym:"all", tab:"dash",
   calMonth:null, listDay:null, unreviewed:false, listLimit:60, drawerId:null, drawerList:[], run:null };
 
 /* 포맷 */
@@ -608,7 +625,8 @@ async function loadAll(){
   if(VIEW){
     document.body.classList.add("view"); $("#viewTag").hidden = false; $("#sample").hidden = true;
     try{
-      const [tr, eq, st, nt] = await Promise.all([rawGet("data/trades.json"), rawGet("data/equity.json"), rawGet("data/status.json"), rawGet("data/notes.json")]);
+      const [tr, eq, st, nt, rb] = await Promise.all([rawGet("data/trades.json"), rawGet("data/equity.json"), rawGet("data/status.json"), rawGet("data/notes.json"), rawGet("data/rebates.json")]);
+      S.rebates = flatRebates(rb);
       if(!tr) throw new Error("이 매매일지는 지금 공개되어 있지 않아요.");
       S.allTrades = tr.trades||[]; S.equity = eq||{days:{}}; S.status = st||{}; S.notes = nt||{}; S.live = true;
       const fromStatus = Object.keys(S.status);
@@ -622,7 +640,8 @@ async function loadAll(){
     }
   } else if(isLive()){
     try{
-      const [tr, eq, st, nt] = await Promise.all([ghRaw("data/trades.json"), ghRaw("data/equity.json"), ghRaw("data/status.json"), ghNotes()]);
+      const [tr, eq, st, nt, rb] = await Promise.all([ghRaw("data/trades.json"), ghRaw("data/equity.json"), ghRaw("data/status.json"), ghNotes(), ghRaw("data/rebates.json").catch(()=>null)]);
+      S.rebates = flatRebates(rb);
       S.allTrades = ((tr && tr.trades) || []); S.equity = eq || {days:{}}; S.status = st || {}; S.notes = nt.data || {}; S.live = true;
       await loadConnected();
       S.trades = S.allTrades.filter(t=>S.connected.has(exOf(t)));
@@ -655,6 +674,12 @@ async function loadConnected(){
   const fromStatus = Object.keys(S.status||{});
   S.connected = new Set(fromStatus.length ? fromStatus : S.allTrades.map(exOf));
 }
+/* 수수료 페이백: 거래소에서 들어온 'Fee rebate' 입금 (매매 건별이 아니라 시각별 입금) */
+function flatRebates(rb){ const out=[]; for(const [ex,list] of Object.entries(rb||{})) for(const r of list||[]) out.push({ex, ts:r.ts, amt:r.amt}); return out.sort((a,b)=>a.ts-b.ts); }
+const rebOn = () => cfg.rebateIn !== false;                                    // 손익에 페이백 포함 (기본 켬)
+const rebExact = () => S.dir==="all" && S.sym==="all" && S.reason==="all";     // 종목·방향·근거로 거르면 페이백은 수수료 비율로 추정
+function rebIn(start, end=Infinity){ return S.rebates.filter(r=>S.connected.has(r.ex) && (S.ex==="all"||r.ex===S.ex) && r.ts>=start && r.ts<end); }
+const tradeFee = t => Math.abs(Math.min(0, t.fee||0));
 function reasons(){
   const t = S.notes.__settings && S.notes.__settings.reasonTags;
   return (Array.isArray(t) && t.length) ? t : (cfg.reasons && cfg.reasons.length ? cfg.reasons : DEFAULT_REASONS);
@@ -715,19 +740,24 @@ async function triggerSync(){
 }
 
 /* 필터 & 통계 */
+const dayStart = d => Date.parse(d+"T00:00:00+09:00");
 function periodStart(){
   const now = Date.now(), p = S.period;
   if(p==="all") return 0;
+  if(p==="custom") return S.from ? dayStart(S.from) : 0;
   if(p==="today") return Date.parse(kstDay(now)+"T00:00:00+09:00");
   if(p==="month") return Date.parse(kstDay(now).slice(0,7)+"-01T00:00:00+09:00");
   if(p==="ytd") return Date.parse(kstDay(now).slice(0,4)+"-01-01T00:00:00+09:00");
   return Date.parse(kstDay(now-(Number(p)-1)*86400000)+"T00:00:00+09:00");
 }
-const periodName = () => ({"today":"오늘","7":"최근 7일","30":"최근 30일","90":"최근 90일","month":"이번 달","ytd":"올해","all":"전체 기간"})[S.period];
+// 기간 끝: '기간 지정'에서 종료일을 고른 경우만 그날 자정까지, 나머지는 지금까지
+function periodEnd(){ return (S.period==="custom" && S.to) ? dayStart(S.to)+86400000 : Infinity; }
+const md = d => `${+d.slice(5,7)}/${+d.slice(8)}`;
+const periodName = () => S.period==="custom" ? `${S.from?md(S.from):"처음"} ~ ${S.to?md(S.to):"오늘"}` : ({"today":"오늘","7":"최근 7일","30":"최근 30일","90":"최근 90일","month":"이번 달","ytd":"올해","all":"전체 기간"})[S.period];
 function pass(t){ return (S.dir==="all"||t.direction===S.dir) && (S.ex==="all"||exOf(t)===S.ex) && (S.sym==="all"||baseOf(t)===S.sym)
   && (S.reason==="all" || (S.reason==="__none" ? !reasonsOf(t.id).length : reasonsOf(t.id).includes(S.reason))); }
 const closedUsd = t => t.status==="closed" && USD.has(t.ccy||"USDT") && t.realizedPnl!=null;
-function inPeriod(){ const s=periodStart(); return S.trades.filter(t=>t.uTime>=s && pass(t)); }
+function inPeriod(){ const s=periodStart(), e=periodEnd(); return S.trades.filter(t=>t.uTime>=s && t.uTime<e && pass(t)); }
 function equityOn(day){
   const days = S.equity.days||{}; const keys = Object.keys(days).sort(); if(!keys.length) return null;
   const pick = k => { const d = days[k]; if(S.ex!=="all") return d.by ? d.by[S.ex] : (S.ex==="okx" ? d.open : null); return d.open; };
@@ -737,7 +767,7 @@ function equityOn(day){
 }
 function dayEquity(day){ const d=(S.equity.days||{})[day]; if(!d) return null; return S.ex==="all" ? d.open : (d.by? d.by[S.ex] : null); }
 
-function stats(trades){
+function stats(trades, rebs){
   const t = trades.filter(closedUsd).sort((a,b)=>a.uTime-b.uTime);
   const n = t.length, W = t.filter(x=>x.realizedPnl>0), L = t.filter(x=>x.realizedPnl<0);
   const sum = a => a.reduce((s,x)=>s+x.realizedPnl,0);
@@ -751,15 +781,24 @@ function stats(trades){
   const holds = t.map(x=>x.uTime-x.cTime).filter(v=>v>0);
   const startEq = n ? equityOn(kstDay(t[0].uTime)) : null;
   let cum=0, peak=0, mdd=0, mddPct=0;
-  const curve = [{x:n?t[0].cTime:0, y:0, dd:0, tr:null}];
-  for(const x of t){ cum+=x.realizedPnl; if(cum>peak) peak=cum; const dd=cum-peak; if(dd<mdd) mdd=dd; if(startEq){ const p=dd/(startEq+peak); if(p<mddPct) mddPct=p; } curve.push({x:x.uTime,y:cum,dd,tr:x}); }
+  const rebate = (rebs||[]).reduce((a,r)=>a+r.amt,0);
+  const useReb = rebOn() && rebs && rebs.length;
+  // 곡선: 청산 시점 손익 + (켜져 있으면) 페이백 입금 시점
+  const ev = t.map(x=>({x:x.uTime, v:x.realizedPnl, tr:x}));
+  if(useReb) for(const r of rebs) ev.push({x:r.ts, v:r.amt, reb:r});
+  ev.sort((a,b)=>a.x-b.x);
+  const x0 = Math.min(n?t[0].cTime:Infinity, ev.length?ev[0].x:Infinity);
+  const curve = [{x:isFinite(x0)?x0:0, y:0, dd:0, tr:null}];
+  for(const e of ev){ cum+=e.v; if(cum>peak) peak=cum; const dd=cum-peak; if(dd<mdd) mdd=dd; if(startEq){ const p=dd/(startEq+peak); if(p<mddPct) mddPct=p; } curve.push({x:e.x,y:cum,dd,tr:e.tr||null,reb:e.reb||null}); }
   let maxW=0,maxL=0,cw=0,cl=0; for(const x of t){ if(x.realizedPnl>0){cw++;cl=0;} else if(x.realizedPnl<0){cl++;cw=0;} maxW=Math.max(maxW,cw); maxL=Math.max(maxL,cl); }
   return { t, n, wins:W.length, losses:L.length, gw, gl, total, avgWin, avgLoss, winRate, payoff,
     exp: n? total/n : null, expR: rs.length? rs.reduce((a,b)=>a+b,0)/rs.length : null, pf, fees,
     hold: holds.length? holds.reduce((a,b)=>a+b,0)/holds.length : null, curve, mdd, mddPct: startEq? mddPct : null,
     maxW, maxL, cur: cw? `${cw}연승 중` : cl? `${cl}연패 중` : "",
     best: t.reduce((a,x)=>!a||x.realizedPnl>a.realizedPnl?x:a,null), worst: t.reduce((a,x)=>!a||x.realizedPnl<a.realizedPnl?x:a,null),
-    startEq, ret: startEq? total/startEq : null };
+    rebate, tradeFees: t.reduce((a,x)=>a+tradeFee(x),0),
+    net: total + (rebOn()? rebate : 0),
+    startEq, ret: startEq? (total + (rebOn()? rebate:0))/startEq : null };
 }
 const groupBy = (arr,f) => { const m=new Map(); for(const x of arr){ const k=f(x); if(!m.has(k)) m.set(k,[]); m.get(k).push(x);} return m; };
 function rowStats(a){ const w=a.filter(x=>x.realizedPnl>0).length, l=a.filter(x=>x.realizedPnl<0).length; return {n:a.length, wr:(w+l)?w/(w+l):null, pnl:a.reduce((s,x)=>s+x.realizedPnl,0)}; }
@@ -797,6 +836,13 @@ function render(){
   $("#fSymMore").classList.toggle("on", $("#fSymMore").value!=="");
   $$("[data-tab]").forEach(b=>b.setAttribute("aria-selected", b.dataset.tab===S.tab));
   $("#fPeriod").hidden = S.tab==="cal";
+  $("#fRange").hidden = S.tab==="cal" || S.period!=="custom";
+  if(S.period==="custom"){
+    const today = kstDay(Date.now());
+    $("#rFrom").value = S.from; $("#rFrom").max = S.to || today;
+    $("#rTo").value = S.to || today; $("#rTo").disabled = !S.to; $("#rTo").min = S.from; $("#rTo").max = today;
+    $("#rToday").setAttribute("aria-pressed", !S.to);
+  }
   $(".filters").hidden = S.live && !S.connected.size;
   if(S.live && !S.connected.size){
     $("#view").innerHTML = `<div class="onb"><h2>거래소를 연결하세요</h2><p>쓰는 거래소의 읽기 전용 API 키를 한 번 등록하면, 매매 기록이 2시간마다 자동으로 쌓여요. 키는 내 저장소의 암호화된 공간에만 들어가요.</p><button class="btn ditto" id="goEx">거래소 연결</button></div>`;
@@ -812,7 +858,19 @@ function dbar(v, max){
 const wr = r => r!=null ? Math.round(r*100)+"%" : "–";
 
 function renderDash(){
-  const all = inPeriod(), s = stats(all);
+  const all = inPeriod(), ps0 = periodStart();
+  let s;
+  const pe0 = periodEnd();
+  if(rebExact()) s = stats(all, rebIn(ps0, pe0));
+  else {
+    // 종목·방향·근거로 거른 경우: 기간 전체의 '페이백 ÷ 낸 수수료' 비율로 추정
+    const base = S.trades.filter(t=>t.uTime>=ps0 && t.uTime<pe0 && closedUsd(t) && (S.ex==="all"||exOf(t)===S.ex));
+    const fee = base.reduce((a,x)=>a+tradeFee(x),0), got = rebIn(ps0, pe0).reduce((a,r)=>a+r.amt,0);
+    s = stats(all);
+    s.rebate = fee ? s.tradeFees * got/fee : 0; s.rebEst = true;
+    s.net = s.total + (rebOn()? s.rebate : 0);
+    if(s.startEq) s.ret = s.net/s.startEq;
+  }
   { const ps = periodStart(); if(ps && s.curve.length>1 && s.curve[0].x < ps) s.curve[0].x = ps; }  // 곡선은 기간 시작점부터
   const open = all.filter(t=>t.status!=="closed").length;
   const reviewed = s.t.filter(t=>S.notes[t.id] && S.notes[t.id].reviewed).length;
@@ -821,13 +879,14 @@ function renderDash(){
   const feeShare = (s.total - s.fees)>0 && s.fees<0 ? `수수료 전 손익의 ${Math.round(Math.abs(s.fees/(s.total-s.fees))*100)}%` : "";
   const subParts = [];
   if(s.ret!=null) subParts.push(`<span class="${tone(s.ret)}">${fmtPct(s.ret,2)}</span> 자산 대비`);
+  if(s.rebate) subParts.push(rebOn() ? `페이백 ${fmtS(s.rebate)}${s.rebEst?"(추정)":""} 포함` : `페이백 ${fmtS(s.rebate)}${s.rebEst?"(추정)":""} 별도`);
   subParts.push(`${s.n}건 청산`);
   if(open) subParts.push(`${open}건 보유 중`);
   $("#view").innerHTML = `
   <div class="grid-top">
     <section class="panel ov">
-      <div class="lbl">실현손익 <i>${periodName()}, 수수료·펀딩비 포함</i></div>
-      <div class="big ${tone(s.total)}">${fmtS(s.total)}<small>USDT</small></div>
+      <div class="lbl">실현손익 <i>${periodName()}, 수수료·펀딩비${rebOn()?"·페이백":""} 포함</i></div>
+      <div class="big ${tone(s.net)}">${fmtS(s.net)}<small>USDT</small></div>
       <div class="sub">${subParts.join(", ")}</div>
       <div class="chart" id="eq"></div>
       <div class="dd-cap"><span>고점 대비 낙폭</span><span class="n">최대 ${fmtS(s.mdd)}${s.mddPct!=null?` (${fmtPct(s.mddPct)})`:""}</span></div>
@@ -842,6 +901,7 @@ function renderDash(){
         <div><dt title="총수익 ÷ 총손실. 1.5 이상이면 양호">Profit Factor</dt><dd>${pf}<small>번 돈 ${fmtN(s.gw,0)}, 잃은 돈 ${fmtN(Math.abs(s.gl),0)}</small></dd></div>
         <div><dt>최장 연속</dt><dd>${s.maxW}연승 ${s.maxL}연패<small>${s.cur||"&nbsp;"}</small></dd></div>
         <div><dt>평균 보유</dt><dd>${fmtDur(s.hold)}</dd></div>
+        <div><dt title="거래소에서 돌려받은 수수료. 매매 건별이 아니라 입금된 시각 기준">수수료 페이백</dt><dd class="${tone(s.rebate)}">${s.rebate?fmtS(s.rebate):"–"}<small>${s.tradeFees? `낸 수수료 ${fmtN(s.tradeFees,1)}의 ${Math.round(s.rebate/s.tradeFees*100)}%`:"&nbsp;"}${s.rebEst?", 추정":""}</small></dd></div>
         <div><dt title="거래 수수료와 펀딩비 합계">수수료·펀딩비</dt><dd class="${tone(s.fees)}">${fmtS(s.fees,1)}<small>${feeShare||"&nbsp;"}</small></dd></div>
         <div><dt>복기</dt><dd>${reviewed} / ${s.n}<small><button class="textbtn" id="goUnrev">${s.n-reviewed?`안 한 매매 ${s.n-reviewed}건 보기`:"모두 복기했어요"}</button></small></dd></div>
       </dl>
@@ -959,7 +1019,7 @@ function drawEquity(s, hOverride){
     let a=0,b=xs.length-1; while(b-a>1){ const m=(a+b)>>1; if(xs[m]<mx) a=m; else b=m; }
     const i=Math.abs(xs[a]-mx)<=Math.abs(xs[b]-mx)?a:b, p=pts[i];
     hv.style.display=""; dl.style.display=""; [hl,dl].forEach(l=>{l.setAttribute("x1",xs[i]); l.setAttribute("x2",xs[i]);}); hc.setAttribute("cx",xs[i]); hc.setAttribute("cy",Y(p.y));
-    tip.innerHTML = p.tr ? `<b>${esc(baseOf(p.tr))}</b> <span class="side ${p.tr.direction}">${dirTxt(p.tr.direction)}</span> <span class="n ${tone(p.tr.realizedPnl)}">${fmtS(p.tr.realizedPnl)}</span><br><span class="mid n">${fmtDT(p.tr.uTime)}</span><br>누적 <b class="n">${fmtS(p.y)}</b>` : `<span class="mid">기간 시작</span>`;
+    tip.innerHTML = p.reb ? `<b>수수료 페이백</b> <span class="n up">${fmtS(p.reb.amt,4)}</span><br><span class="mid n">${fmtDT(p.reb.ts)}</span><br>누적 <b class="n">${fmtS(p.y)}</b>` : p.tr ? `<b>${esc(baseOf(p.tr))}</b> <span class="side ${p.tr.direction}">${dirTxt(p.tr.direction)}</span> <span class="n ${tone(p.tr.realizedPnl)}">${fmtS(p.tr.realizedPnl)}</span><br><span class="mid n">${fmtDT(p.tr.uTime)}</span><br>누적 <b class="n">${fmtS(p.y)}</b>` : `<span class="mid">기간 시작</span>`;
     tip.style.left=Math.min(Math.max(xs[i],80),W-80)+"px"; tip.style.top=Y(p.y)+"px"; tip.classList.add("show");
   };
   const leave = () => { hv.style.display="none"; dl.style.display="none"; tip.classList.remove("show"); };
@@ -974,15 +1034,17 @@ function renderCal(){
   const [yy,mm] = S.calMonth.split("-").map(Number);
   const t = S.trades.filter(x=>closedUsd(x) && pass(x));
   const byDay = groupBy(t, x=>kstDay(x.uTime));
+  const rebDay = groupBy((rebOn() && rebExact()) ? rebIn(0) : [], r=>kstDay(r.ts));
   const startDow = new Date(Date.UTC(yy,mm-1,1)).getUTCDay(), daysIn = new Date(Date.UTC(yy,mm,0)).getUTCDate();
   const today = kstDay(Date.now());
   const D = [];
   for(let d=1; d<=daysIn; d++){
     const key = `${yy}-${String(mm).padStart(2,"0")}-${String(d).padStart(2,"0")}`, a = byDay.get(key)||[];
-    const pnl = a.reduce((s,x)=>s+x.realizedPnl,0), eq = dayEquity(key);
-    D.push({key, d, n:a.length, pnl, pct:(a.length && eq)? pnl/eq : null});
+    const reb = (rebDay.get(key)||[]).reduce((s,r)=>s+r.amt,0);
+    const pnl = a.reduce((s,x)=>s+x.realizedPnl,0) + reb, eq = dayEquity(key);
+    D.push({key, d, n:a.length, reb, pnl, pct:((a.length||reb) && eq)? pnl/eq : null});
   }
-  const act = D.filter(x=>x.n), tot = act.reduce((s,x)=>s+x.pnl,0);
+  const act = D.filter(x=>x.n||x.reb), tot = act.reduce((s,x)=>s+x.pnl,0);
   const maxAbs = Math.max(1e-9, ...act.map(x=>Math.abs(x.pnl)));
   const best = act.reduce((a,x)=>!a||x.pnl>a.pnl?x:a,null), worst = act.reduce((a,x)=>!a||x.pnl<a.pnl?x:a,null);
   const mEq = equityOn(`${S.calMonth}-01`), mPct = mEq? tot/mEq : null;
@@ -992,11 +1054,11 @@ function renderCal(){
     const d=i-startDow+1;
     if(d<1||d>daysIn) cells.push('<div class="cell blank"></div>');
     else {
-      const x=D[d-1]; wk.pnl+=x.pnl; wk.n+=x.n;
-      const a = x.n ? (0.14+0.62*Math.sqrt(Math.abs(x.pnl)/maxAbs)).toFixed(2) : 0;
-      cells.push(`<button class="cell ${x.n?"has":""} ${x.key===today?"today":""}" ${x.n?`data-day="${x.key}"`:"disabled"} aria-label="${x.key} ${x.n?fmtS(x.pnl)+" USDT":"매매 없음"}">
-        ${x.n?`<span class="fill" style="background:var(${x.pnl>=0?"--up":"--down"});opacity:${a}"></span>`:""}<span class="d">${d}</span>
-        ${x.n?`<span class="p">${fmtS(x.pnl,Math.abs(x.pnl)>=1000?0:1)}</span><span class="r">${x.pct!=null?fmtPct(x.pct,2)+", ":""}${x.n}건</span><span class="pm">${short(x.pnl)}</span>`:""}</button>`);
+      const x=D[d-1], has=x.n||x.reb; wk.pnl+=x.pnl; wk.n+=x.n;
+      const a = has ? (0.14+0.62*Math.sqrt(Math.abs(x.pnl)/maxAbs)).toFixed(2) : 0;
+      cells.push(`<button class="cell ${x.n?"has":""} ${x.key===today?"today":""}" ${x.n?`data-day="${x.key}"`:"disabled"} aria-label="${x.key} ${has?fmtS(x.pnl)+" USDT":"매매 없음"}">
+        ${has?`<span class="fill" style="background:var(${x.pnl>=0?"--up":"--down"});opacity:${a}"></span>`:""}<span class="d">${d}</span>
+        ${has?`<span class="p">${fmtS(x.pnl,Math.abs(x.pnl)>=1000?0:1)}</span><span class="r">${x.pct!=null?fmtPct(x.pct,2)+", ":""}${x.n?x.n+"건":"페이백"}</span><span class="pm">${short(x.pnl)}</span>`:""}</button>`);
     }
     if(i%7===6){ cells.push(`<div class="cell wk">${wk.n?`<span class="p ${tone(wk.pnl)}">${fmtS(wk.pnl,Math.abs(wk.pnl)>=1000?0:1)}</span><span class="r">${wk.n}건</span><span class="pm ${tone(wk.pnl)}">${short(wk.pnl)}</span>`:""}</div>`); wk={pnl:0,n:0}; }
   }
@@ -1015,7 +1077,7 @@ function renderCal(){
     </div>
   </div>
   <div class="cal">${cells.join("")}</div>
-  <p class="cal-note">색이 진할수록 그 달에서 손익이 큰 날이에요. %는 그날 시작 자산 대비, 날짜를 누르면 그날 매매가 열려요.</p>
+  <p class="cal-note">${rebOn() && rebExact() && S.rebates.length ? "일별 손익에 그날 들어온 수수료 페이백이 포함돼 있어요. " : ""}색이 진할수록 그 달에서 손익이 큰 날이에요. %는 그날 시작 자산 대비, 날짜를 누르면 그날 매매가 열려요.</p>
   </section>
   <section class="panel"><h3>월별</h3>${monthTable(t)}</section>`;
   const shift=k=>{ const d=new Date(Date.UTC(yy,mm-1+k,1)); S.calMonth=`${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}`; renderCal(); };
@@ -1026,7 +1088,8 @@ function renderCal(){
 function monthTable(t){
   const g=[...groupBy(t,x=>kstDay(x.uTime).slice(0,7))].sort((a,b)=>b[0].localeCompare(a[0])).slice(0,12);
   if(!g.length) return '<div class="empty">아직 청산한 매매가 없어요.</div>';
-  const rows=g.map(([m,a])=>{ const s=stats(a), eq=equityOn(m+"-01"); return {m,s,pct:eq?s.total/eq:null}; });
+  const rows=g.map(([m,a])=>{ const st=Date.parse(m+"-01T00:00:00+09:00"), en=Date.parse(new Date(Date.UTC(+m.slice(0,4),+m.slice(5),1)).toISOString().slice(0,10)+"T00:00:00+09:00");
+    const s=stats(a, rebExact()? rebIn(st,en) : null), eq=equityOn(m+"-01"); s.total=s.net; return {m,s,pct:eq?s.net/eq:null}; });
   const max=Math.max(...rows.map(r=>Math.abs(r.s.total)));
   return `<table class="t"><thead><tr><th></th><th>건수</th><th>승률</th><th>손익비</th><th class="bar-c opt"></th><th>손익</th><th>수익률</th></tr></thead><tbody>${
     rows.map(r=>`<tr class="click" data-month="${r.m}"><td class="n">${r.m.replace("-",".")}</td><td>${r.s.n}</td><td>${wr(r.s.winRate)}</td><td>${r.s.payoff!=null?r.s.payoff.toFixed(2):"–"}</td><td class="bar-c opt">${dbar(r.s.total,max)}</td><td class="${tone(r.s.total)}">${fmtS(r.s.total,1)}</td><td class="${tone(r.pct)}">${r.pct!=null?fmtPct(r.pct,1):"–"}</td></tr>`).join("")}</tbody></table>`;
@@ -1151,7 +1214,7 @@ function setPane(p){
 }
 function openSettings(pane){
   $("#sOwner").value=cfg.owner||""; $("#sRepo").value=cfg.repo||"trade-journal-data"; $("#sBranch").value=cfg.branch||"main"; $("#sWf").value=cfg.wf||"sync.yml";
-  $("#sToken").value=cfg.token||""; $("#sUpdown").value=cfg.updown||"kr"; $("#sTags").value=tags().join("\n"); $("#sReasons").value=reasons().join("\n"); $("#sResult").innerHTML="";
+  $("#sToken").value=cfg.token||""; $("#sUpdown").value=cfg.updown||"kr"; $("#sTags").value=tags().join("\n"); $("#sReasons").value=reasons().join("\n"); $("#sRebate").checked = rebOn(); $("#sResult").innerHTML="";
   setPane(typeof pane==="string" ? pane : (isLive() ? "ex" : "gh"));
   $("#settings").classList.add("show");
 }
@@ -1180,7 +1243,7 @@ async function saveLook(){
   const lines = id => $(id).value.split("\n").map(s=>s.trim()).filter(Boolean);
   const tagsNew=lines("#sTags"), reasonsNew=lines("#sReasons");
   const changed = JSON.stringify(tagsNew)!==JSON.stringify(tags()) || JSON.stringify(reasonsNew)!==JSON.stringify(reasons());
-  cfg={...cfg, updown:$("#sUpdown").value, tags:tagsNew, reasons:reasonsNew}; saveCfg(cfg); applyLook();
+  cfg={...cfg, updown:$("#sUpdown").value, tags:tagsNew, reasons:reasonsNew, rebateIn:$("#sRebate").checked}; saveCfg(cfg); applyLook();
   const upd = d => { d.__settings={...(d.__settings||{}), mistakeTags:tagsNew, reasonTags:reasonsNew}; };
   if(S.live && changed){ try{ S.notes = await ghSaveNotes(upd, "설정: 진입 근거·실수 항목"); }catch(e){ toast("항목을 저장하지 못했어요: "+e.message,5000); return; } }
   else if(!S.live) upd(S.notes);
@@ -1418,13 +1481,21 @@ function makeDemo(){
     const k=kstDay(d); days[k]={open:Math.round(eq.okx*100)/100, by:{okx:Math.round(eq.okx*100)/100}};
     for(const x of byDay.get(k)||[]) eq[x.exchange]+=x.realizedPnl;
   }
-  return {trades, equity:{days}, notes, status:{okx:{ok:true}}};
+  // 샘플 페이백: 낸 수수료의 20%가 몇 시간 뒤 입금
+  const rebates = trades.filter(x=>x.status==="closed").map(x=>({ex:"okx", ts:Math.min(now-30000, x.uTime+3*3600000), amt:+(tradeFee(x)*0.2).toFixed(4)})).sort((a,b)=>a.ts-b.ts);
+  return {trades, equity:{days}, notes, status:{okx:{ok:true}}, rebates};
 }
 
 /* 이벤트 */
 function toast(m, ms=2600){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(toast.t); toast.t=setTimeout(()=>t.classList.remove("show"),ms); }
 const seg = (sel, key) => $(sel).addEventListener("click", e=>{ const b=e.target.closest("button"); if(!b) return; S[key]=b.dataset.v; if(key==="period"){ S.listDay=null; S.listLimit=60; } render(); });
 seg("#fPeriod","period"); seg("#fDir","dir"); seg("#fEx","ex");
+// 기간 지정: 처음 누르면 최근 30일로 채워 두고, 종료일은 '오늘까지'가 기본
+$("#fPeriod").addEventListener("click", e=>{ const b=e.target.closest("button[data-v='custom']"); if(!b) return;
+  if(!S.from){ S.from = kstDay(Date.now()-29*86400000); S.to = ""; render(); } setTimeout(()=>$("#rFrom").focus(),0); });
+$("#rFrom").addEventListener("change", e=>{ S.from = e.target.value; if(S.to && S.from > S.to) S.to = S.from; render(); });
+$("#rTo").addEventListener("change", e=>{ const today=kstDay(Date.now()); S.to = (e.target.value && e.target.value < today) ? e.target.value : ""; if(S.to && S.from > S.to) S.from = S.to; render(); });
+$("#rToday").onclick = ()=>{ const today=kstDay(Date.now()); S.to = S.to ? "" : today; if(S.to===today){ $("#rTo").disabled=false; try{ $("#rTo").showPicker(); }catch{} } render(); };
 seg("#fSym","sym");
 $("#fSymMore").onchange = e => { S.sym=e.target.value||"all"; render(); };
 $$("button[data-tab]").forEach(b=>b.onclick=()=>{ scrollTo({top:0}); S.tab=b.dataset.tab; if(S.tab!=="list"){ S.listDay=null; S.unreviewed=false; } render(); });
