@@ -301,6 +301,10 @@ label.btn{cursor:pointer}
   .btn.hb{width:36px;height:36px;padding:0;background:transparent}
   .btn.hb .ic{display:block}
   .btn.hb .lb{display:none}
+  /* 동기화는 휴대폰에서도 글자까지 보여서 새로고침과 헷갈리지 않게 */
+  #btnSync.hb{width:auto;padding:0 12px 0 10px;background:var(--raise);gap:5px;font-size:13px}
+  #btnSync.hb .ic{width:16px;height:16px}
+  #btnSync.hb .lb{display:inline}
   /* 아이폰은 16px보다 작은 입력창을 누르면 화면이 확대되므로 */
   input,textarea,select{font-size:16px}
   .filters select{font-size:13px}
@@ -487,7 +491,7 @@ var TJSeal=(()=>{var M1=Object.create;var kf=Object.defineProperty;var T1=Object
 "use strict";
 const DEFAULT_TAGS = ["손절 미준수","근거 없는 진입","추격 진입","조기 익절","원칙 밖 추가매수","과한 레버리지·비중","보복 매매","혼조 구간 진입"];
 const CLOSE_TYPE = {"1":"부분청산","2":"전체청산","3":"강제청산","4":"부분 강제청산","5":"ADL","6":"ADL"};
-const APP_VERSION = "3.4";
+const APP_VERSION = "3.4.1";
 const EXCHANGES = {
   okx: { name:"OKX", url:"https://www.okx.com/account/my-api",
     fields:[["API Key","OKX_API_KEY"],["Secret Key","OKX_SECRET_KEY"],["Passphrase","OKX_PASSPHRASE"]],
@@ -689,8 +693,9 @@ async function triggerSync(){
   if(!S.connected.size){ openSettings("ex"); return; }
   const btn = $("#btnSync"); btn.disabled = true; btn.classList.add("spin"); $(".lb",btn).textContent = "수집 중";
   try{
+    toast("거래소에서 최신 매매를 가져오는 중이에요. 1분쯤 걸려요.", 4000);
     const run = await runSync();
-    if(!run) toast("아직 수집 중이에요. 잠시 뒤 페이지를 새로고침하세요.");
+    if(!run) toast("아직 수집 중이에요. 잠시 뒤 다시 확인하세요.");
     else if(run.conclusion==="success"){ toast("동기화 완료"); await loadAll(); }
     else { S.run = run; renderFeeds(); toast("수집이 실패했어요. 저장소 Actions 탭에서 로그를 확인하세요.", 5000); }
   }catch(e){ toast(e.message, 5000); refreshRun(); }
