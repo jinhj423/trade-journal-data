@@ -83,5 +83,12 @@
   ],
   "reviewed": true,
   "updated": 1793113205864
+ },
+ "__settings": {
+  "view": {
+   "period": "custom",
+   "from": "2026-09-29",
+   "to": ""
+  }
  }
 }
