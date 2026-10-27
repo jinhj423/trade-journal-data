@@ -1,6 +1,16 @@
 {
  "okx": [
   {
+   "id": "4046084123822837760_1793144055419",
+   "instId": "SOXL-USDT-SWAP",
+   "base": "SOXL",
+   "direction": "long",
+   "lever": 3.0,
+   "cTime": 1793144055419,
+   "fundingFee": 0.0,
+   "fee": -0.22426
+  },
+  {
    "id": "4047068851644321792_1793114450641",
    "instId": "BTC-USDT-SWAP",
    "base": "BTC",
