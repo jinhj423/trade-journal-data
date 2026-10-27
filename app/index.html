@@ -520,7 +520,7 @@ var TJSeal=(()=>{var M1=Object.create;var kf=Object.defineProperty;var T1=Object
 const DEFAULT_REASONS = ["지표","스캐너","작도","기타"];
 const DEFAULT_TAGS = ["손절 미준수","근거 없는 진입","추격 진입","조기 익절","원칙 밖 추가매수","과한 레버리지·비중","보복 매매","혼조 구간 진입"];
 const CLOSE_TYPE = {"1":"부분청산","2":"전체청산","3":"강제청산","4":"부분 강제청산","5":"ADL","6":"ADL"};
-const APP_VERSION = "3.9";
+const APP_VERSION = "3.10";
 const EXCHANGES = {
   okx: { name:"OKX", url:"https://www.okx.com/account/my-api",
     fields:[["API Key","OKX_API_KEY"],["Secret Key","OKX_SECRET_KEY"],["Passphrase","OKX_PASSPHRASE"]],
@@ -555,7 +555,8 @@ let cfg = loadCfg();
 const VIEW = (()=>{
   const v = window.__TJ_VIEW || new URLSearchParams(location.search).get("view");
   const m = v && String(v).match(/^([\w.-]+)\/([\w.-]+)$/);
-  return m ? {owner:m[1], repo:m[2], branch:"main"} : null;
+  const f = new URLSearchParams(location.search).get("from");
+  return m ? {owner:m[1], repo:m[2], branch:"main", from: (f && /^\d{4}-\d{2}-\d{2}$/.test(f)) ? f : null} : null;
 })();
 const isLive = () => !!(cfg.owner && cfg.repo && cfg.token);
 
@@ -637,6 +638,19 @@ async function loadAll(){
       const fromStatus = Object.keys(S.status);
       S.connected = new Set(fromStatus.length ? fromStatus : S.allTrades.map(exOf));
       S.trades = S.allTrades.filter(t=>S.connected.has(exOf(t)));
+      if(VIEW.from){
+        // 공유 범위: 이 날짜부터 오늘까지만 보여줌
+        const fromTs = dayStart(VIEW.from);
+        S.trades = S.trades.filter(t=>t.uTime>=fromTs);
+        S.rebates = S.rebates.filter(r=>r.ts>=fromTs);
+        const ids = new Set(S.trades.map(t=>t.id));
+        S.notes = Object.fromEntries(Object.entries(S.notes).filter(([k])=>k==="__settings" || ids.has(k)));
+        S.equity = {...S.equity, days: Object.fromEntries(Object.entries(S.equity.days||{}).filter(([d])=>d>=VIEW.from))};
+        if(!S.viewApplied){ S.viewApplied = true; S.period = "all"; }
+        $("#viewTag").textContent = `보기 전용, ${md(VIEW.from)}부터`;
+        const allBtn = $('#fPeriod button[data-v="all"]'); allBtn.textContent = `${md(VIEW.from)}부터`;
+        requestAnimationFrame(()=>allBtn.scrollIntoView({block:"nearest", inline:"center"}));
+      }
       // 마지막 수집 시각: 데이터 폴더의 마지막 커밋 (토큰 없이 조회)
       fetch(`https://api.github.com/repos/${encodeURIComponent(VIEW.owner)}/${encodeURIComponent(VIEW.repo)}/commits?path=data&per_page=1`, {cache:"no-store"})
         .then(r=>r.ok?r.json():null).then(j=>{ if(j&&j[0]){ S.run={status:"completed",conclusion:"success",updated_at:j[0].commit.committer.date}; renderFeeds(); } }).catch(()=>{});
@@ -759,7 +773,7 @@ async function triggerSync(){
 const dayStart = d => Date.parse(d+"T00:00:00+09:00");
 function periodStart(){
   const now = Date.now(), p = S.period;
-  if(p==="all") return 0;
+  if(p==="all") return (VIEW && VIEW.from) ? dayStart(VIEW.from) : 0;
   if(p==="custom") return S.from ? dayStart(S.from) : 0;
   if(p==="today") return Date.parse(kstDay(now)+"T00:00:00+09:00");
   if(p==="month") return Date.parse(kstDay(now).slice(0,7)+"-01T00:00:00+09:00");
@@ -769,7 +783,7 @@ function periodStart(){
 // 기간 끝: '기간 지정'에서 종료일을 고른 경우만 그날 자정까지, 나머지는 지금까지
 function periodEnd(){ return (S.period==="custom" && S.to) ? dayStart(S.to)+86400000 : Infinity; }
 const md = d => `${+d.slice(5,7)}/${+d.slice(8)}`;
-const periodName = () => S.period==="custom" ? `${S.from?md(S.from):"처음"} ~ ${S.to?md(S.to):"오늘"}` : ({"today":"오늘","7":"최근 7일","30":"최근 30일","90":"최근 90일","month":"이번 달","ytd":"올해","all":"전체 기간"})[S.period];
+const periodName = () => (VIEW && VIEW.from && S.period==="all") ? `${md(VIEW.from)} ~ 오늘` : S.period==="custom" ? `${S.from?md(S.from):"처음"} ~ ${S.to?md(S.to):"오늘"}` : ({"today":"오늘","7":"최근 7일","30":"최근 30일","90":"최근 90일","month":"이번 달","ytd":"올해","all":"전체 기간"})[S.period];
 function pass(t){ return (S.dir==="all"||t.direction===S.dir) && (S.ex==="all"||exOf(t)===S.ex) && (S.sym==="all"||baseOf(t)===S.sym)
   && (S.reason==="all" || (S.reason==="__none" ? !reasonsOf(t.id).length : reasonsOf(t.id).includes(S.reason))); }
 const closedUsd = t => t.status==="closed" && USD.has(t.ccy||"USDT") && t.realizedPnl!=null;
@@ -875,7 +889,7 @@ function render(){
   $("#fRange").hidden = S.tab==="cal" || S.period!=="custom";
   if(S.period==="custom"){
     const today = kstDay(Date.now());
-    $("#rFrom").value = S.from; $("#rFrom").max = S.to || today;
+    $("#rFrom").value = S.from; $("#rFrom").max = S.to || today; $("#rFrom").min = (VIEW && VIEW.from) || "";
     $("#rTo").value = S.to || today; $("#rTo").disabled = !S.to; $("#rTo").min = S.from; $("#rTo").max = today;
     $("#rToday").setAttribute("aria-pressed", !S.to);
   }
@@ -1386,9 +1400,25 @@ async function renderSharePane(){
   const what = `<p class="note"><b style="color:var(--text)">공개되는 것</b>: 매매 기록과 손익 금액, 일별 계좌 자산, 복기 메모와 실수 체크, 수집 스크립트와 화면 코드.<br><b style="color:var(--text)">공개되지 않는 것</b>: 거래소 API 키(저장소 Secrets), GitHub 토큰. 보는 사람은 읽기만 할 수 있고 아무것도 바꿀 수 없어요.</p>`;
   if(pub===true){
     box.innerHTML = `<p class="lead">공개 중이에요. 이 링크를 아는 사람은 누구나 매매일지를 볼 수 있어요. 새 매매는 수집될 때마다 같은 링크에 반영돼요.</p>
+      <div class="f" style="margin-top:6px"><label>공유 범위</label>
+        <div class="chipset" id="shareScope" style="margin-bottom:8px"><button data-v="all">전체 기록</button><button data-v="from">이 날짜부터 오늘까지</button></div>
+        <div class="range" id="shareFromWrap" hidden style="margin:0 0 4px"><input type="date" id="shareFrom" aria-label="공유 시작일"><span class="dim">~ 오늘 (매일 새 매매 포함)</span></div>
+      </div>
       <div class="sharelink"><input id="shareUrl" readonly value="${esc(link)}"><button class="btn ditto" id="copyShare">복사</button></div>
-      <p class="exmsg" id="shareMsg"></p>${what}
+      <p class="exmsg" id="shareMsg"></p>
+      <p class="note">범위를 정하면 그 링크로 들어온 사람에겐 시작일 이전 매매·복기·자산 기록이 화면에 나오지 않아요. 다만 데이터 저장소 자체가 공개라서, 저장소 파일을 직접 열어보면 전체 기록이 보여요.</p>${what}
       <p class="note"><b style="color:var(--text)">공유 멈추기</b>: <a class="textbtn" href="${settingsUrl}" target="_blank" rel="noopener noreferrer">저장소 설정</a> 맨 아래 Danger Zone → Change visibility → Make private. 그 즉시 링크로는 안 보여요.</p>`;
+    // 지금 보고 있는 기간의 시작일을 기본값으로
+    const today = kstDay(Date.now()), ps = periodStart();
+    let scope = (S.period==="custom" && S.from) ? "from" : "all", from = S.period==="custom" && S.from ? S.from : (ps ? kstDay(ps) : kstDay(Date.now()-29*86400000));
+    const upd = ()=>{
+      $$("#shareScope button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.v===scope));
+      $("#shareFromWrap").hidden = scope!=="from"; $("#shareFrom").value = from; $("#shareFrom").max = today;
+      $("#shareUrl").value = scope==="from" ? `${link}&from=${from}` : link; $("#shareMsg").textContent = "";
+    };
+    $("#shareScope").onclick = e=>{ const b=e.target.closest("button"); if(!b) return; scope=b.dataset.v; upd(); };
+    $("#shareFrom").onchange = e=>{ if(e.target.value) from = e.target.value; upd(); };
+    upd();
     $("#copyShare").onclick = async ()=>{ const i=$("#shareUrl"); try{ await navigator.clipboard.writeText(i.value); $("#shareMsg").textContent="복사했어요"; }catch{ i.select(); $("#shareMsg").textContent="선택해 뒀어요. 길게 눌러 복사하세요."; } };
   } else if(pub===false){
     box.innerHTML = `<p class="lead">지금은 비공개라 나만 볼 수 있어요. 데이터 저장소를 Public으로 바꾸면 아래 링크로 누구나 볼 수 있어요.</p>
@@ -1529,7 +1559,7 @@ const seg = (sel, key) => $(sel).addEventListener("click", e=>{ const b=e.target
 seg("#fPeriod","period"); seg("#fDir","dir"); seg("#fEx","ex");
 // 기간 지정: 처음 누르면 최근 30일로 채워 두고, 종료일은 '오늘까지'가 기본
 $("#fPeriod").addEventListener("click", e=>{ const b=e.target.closest("button[data-v='custom']"); if(!b) return;
-  if(!S.from){ S.from = kstDay(Date.now()-29*86400000); S.to = ""; render(); } setTimeout(()=>$("#rFrom").focus(),0); });
+  if(!S.from){ S.from = kstDay(Date.now()-29*86400000); if(VIEW && VIEW.from && S.from < VIEW.from) S.from = VIEW.from; S.to = ""; render(); } setTimeout(()=>$("#rFrom").focus(),0); });
 $("#rFrom").addEventListener("change", e=>{ S.from = e.target.value; if(S.to && S.from > S.to) S.to = S.from; render(); });
 $("#rTo").addEventListener("change", e=>{ const today=kstDay(Date.now()); S.to = (e.target.value && e.target.value < today) ? e.target.value : ""; if(S.to && S.from > S.to) S.from = S.to; render(); });
 $("#rToday").onclick = ()=>{ const today=kstDay(Date.now()); S.to = S.to ? "" : today; if(S.to===today){ $("#rTo").disabled=false; try{ $("#rTo").showPicker(); }catch{} } render(); };
