@@ -221,6 +221,10 @@ button.row:hover{background:var(--hover)}
 .flag{font-size:11px;color:var(--text-2);background:var(--raise);border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:1px}
 .flag.hot{color:var(--up);background:var(--up-wash)}
 .flag.rs{color:var(--ditto);background:var(--ditto-wash)}
+.flag.rg{color:#000;background:var(--ditto);font-weight:600}
+.regret-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.regret-row .chip{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;font-size:14px}
+.regret-row .chip svg{width:13px;height:13px}
 .chips.big .chip{padding:8px 16px;font-size:14px}
 .rv{color:var(--text-3)} .rv.done{color:var(--ditto)}
 .more{padding:16px 0 4px;text-align:center}
@@ -427,6 +431,8 @@ label.btn{cursor:pointer}
     <dl class="facts" id="dFacts"></dl>
     <div class="d-sec">진입 근거 <span class="dim" style="font-weight:400;font-size:12px">누르면 바로 저장돼요</span></div>
     <div class="chips big" id="dReasons"></div>
+    <div class="d-sec">진입 평가</div>
+    <div class="regret-row"><button class="chip" id="dRegret" aria-pressed="false"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 13V2h7.5l-1.5 2.75L10.5 7.5H3"/></svg>아쉬운 진입</button><span class="dim" id="dRegretHint" style="font-size:12px">체크하면 기록에서 따로 모아볼 수 있어요</span></div>
     <div class="d-sec">이 매매에서 한 실수</div>
     <div class="chips" id="dChips"></div>
     <div class="d-sec">복기</div>
@@ -524,7 +530,7 @@ var TJSeal=(()=>{var M1=Object.create;var kf=Object.defineProperty;var T1=Object
 const DEFAULT_REASONS = ["지표","스캐너","작도","기타"];
 const DEFAULT_TAGS = ["손절 미준수","근거 없는 진입","추격 진입","조기 익절","원칙 밖 추가매수","과한 레버리지·비중","보복 매매","혼조 구간 진입"];
 const CLOSE_TYPE = {"1":"부분청산","2":"전체청산","3":"강제청산","4":"부분 강제청산","5":"ADL","6":"ADL"};
-const APP_VERSION = "3.11";
+const APP_VERSION = "3.12";
 const EXCHANGES = {
   okx: { name:"OKX", url:"https://www.okx.com/account/my-api",
     fields:[["API Key","OKX_API_KEY"],["Secret Key","OKX_SECRET_KEY"],["Passphrase","OKX_PASSPHRASE"]],
@@ -566,7 +572,7 @@ const isLive = () => !!(cfg.owner && cfg.repo && cfg.token);
 
 const S = { rebates:[], reason:"all", trades:[], allTrades:[], connected:new Set(), secretsOk:false, exMsg:{}, equity:{days:{}}, notes:{}, status:{}, live:false,
   period:"today", from:"", to:"", dir:"all", ex:"all", sym:"all", tab:"dash",
-  calMonth:null, listDay:null, unreviewed:false, listLimit:60, drawerId:null, drawerList:[], run:null };
+  calMonth:null, listDay:null, unreviewed:false, regret:false, listLimit:60, drawerId:null, drawerList:[], run:null };
 
 /* 포맷 */
 const dayFmt = new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit"});
@@ -930,6 +936,7 @@ function renderDash(){
   { const ps = periodStart(); if(ps && s.curve.length>1 && s.curve[0].x < ps) s.curve[0].x = ps; }  // 곡선은 기간 시작점부터
   const open = all.filter(t=>t.status!=="closed").length;
   const reviewed = s.t.filter(t=>S.notes[t.id] && S.notes[t.id].reviewed).length;
+  const rg = s.t.filter(isRegret), rgSum = rg.reduce((a,x)=>a+x.realizedPnl,0);
   if(!s.n){ $("#view").innerHTML = `<div class="empty">${periodName()}에 청산한 매매가 없어요.${open?` 부분청산 후 보유 중인 포지션이 ${open}개 있어요.`:""}</div>`; return; }
   const pf = s.pf===Infinity ? "∞" : s.pf!=null ? s.pf.toFixed(2) : "–";
   const feeShare = (s.total - s.fees)>0 && s.fees<0 ? `수수료 전 손익의 ${Math.round(Math.abs(s.fees/(s.total-s.fees))*100)}%` : "";
@@ -961,6 +968,7 @@ function renderDash(){
         <div><dt title="거래소에서 돌려받은 수수료. 매매 건별이 아니라 입금된 시각 기준">수수료 페이백</dt><dd class="${tone(s.rebate)}">${s.rebate?fmtS(s.rebate):"–"}${s.rebate?`<small>${krw(s.rebate)}</small>`:""}<small>${s.tradeFees? `낸 수수료 ${fmtN(s.tradeFees,1)}의 ${Math.round(s.rebate/s.tradeFees*100)}%`:"&nbsp;"}${s.rebEst?", 추정":""}</small></dd></div>
         <div><dt title="거래 수수료와 펀딩비 합계">수수료·펀딩비</dt><dd class="${tone(s.fees)}">${fmtS(s.fees,1)}<small>${krw(s.fees)||"&nbsp;"}</small><small>${feeShare||"&nbsp;"}</small></dd></div>
         <div><dt>복기</dt><dd>${reviewed} / ${s.n}<small><button class="textbtn" id="goUnrev">${s.n-reviewed?`안 한 매매 ${s.n-reviewed}건 보기`:"모두 복기했어요"}</button></small></dd></div>
+        <div><dt title="복기에서 '아쉬운 진입'으로 체크한 매매">아쉬운 진입</dt><dd>${rg.length}건${rg.length?` <span class="n ${tone(rgSum)}" style="font-size:13px">${fmtS(rgSum,1)}</span>`:""}<small>${rg.length?`<button class="textbtn" id="goRegret">모아보기</button>`:"복기에서 체크하면 모여요"}</small></dd></div>
       </dl>
     </section>
   </div>
@@ -984,7 +992,8 @@ function renderDash(){
   drawEquity(s);
   if(innerWidth>1060){ const d=$(".kv").offsetHeight-$(".ov").offsetHeight; if(d>4) drawEquity(s, Math.min(460, 250+d)); }
   $$("#view [data-trade]").forEach(el=>el.addEventListener("click",()=>openDrawer(el.dataset.trade, s.t.slice().reverse())));
-  $("#goUnrev").onclick = ()=>{ S.unreviewed = true; S.tab = "list"; render(); };
+  $("#goUnrev").onclick = ()=>{ S.unreviewed = true; S.regret = false; S.tab = "list"; render(); };
+  if($("#goRegret")) $("#goRegret").onclick = ()=>{ S.regret = true; S.unreviewed = false; S.tab = "list"; scrollTo({top:0}); render(); };
   $$("#view tr[data-reason]").forEach(tr=>tr.onclick=()=>{ S.reason = tr.dataset.reason; render(); scrollTo({top:0,behavior:"smooth"}); });
 }
 function groupTable(t, keyFn, order, label){
@@ -1155,9 +1164,11 @@ function monthTable(t){
 }
 
 /* 기록 */
+const isRegret = x => !!(S.notes[x.id] && S.notes[x.id].regret);
 function listData(){
   let a = S.listDay ? S.trades.filter(x=>kstDay(x.uTime)===S.listDay && pass(x)) : inPeriod();
   if(S.unreviewed) a = a.filter(x=>x.status==="closed" && !(S.notes[x.id] && S.notes[x.id].reviewed));
+  if(S.regret) a = a.filter(isRegret);
   return a.sort((x,y)=>y.uTime-x.uTime);
 }
 function renderList(){
@@ -1168,13 +1179,15 @@ function renderList(){
   <div class="list-top">
     ${S.listDay?`<span class="pillx">${+m}월 ${+d}일 매매<button id="clrDay" aria-label="날짜 필터 해제">${ARROW("M3 3l8 8M11 3l-8 8")}</button></span>`:""}
     <label class="check"><input type="checkbox" id="unrev" ${S.unreviewed?"checked":""}> 복기 안 한 매매만</label>
+    <label class="check"><input type="checkbox" id="regretOnly" ${S.regret?"checked":""}> 아쉬운 진입만</label>
     <span class="sum n">${a.length}건, 합계 <b class="${tone(s.total)}">${fmtS(s.total)}</b> USDT${kr(s.total,"krw in")}</span>
   </div>
   <div class="row h"><span>청산</span><span>종목</span><span>방향</span><span class="r">진입가</span><span class="r">청산가</span><span class="r">규모</span><span class="r">실현손익</span><span class="r">수익률</span><span class="r">보유</span><span class="r">복기</span></div>
-  ${shown.length ? shown.map(x=>rowHtml(x,multi)).join("") : `<div class="empty">${S.unreviewed?"복기할 매매가 없어요.":"이 조건에 맞는 매매가 없어요."}</div>`}
+  ${shown.length ? shown.map(x=>rowHtml(x,multi)).join("") : `<div class="empty">${S.regret&&!S.unreviewed?"이 기간에 아쉬운 진입으로 체크한 매매가 없어요. 매매를 열고 진입 평가에서 체크하면 여기 모여요.":S.unreviewed?"복기할 매매가 없어요.":"이 조건에 맞는 매매가 없어요."}</div>`}
   ${a.length>S.listLimit?`<div class="more"><button class="btn" id="more">${a.length-S.listLimit}건 더 보기</button></div>`:""}
   </section>`;
   $("#unrev").onchange = e => { S.unreviewed = e.target.checked; renderList(); };
+  $("#regretOnly").onchange = e => { S.regret = e.target.checked; renderList(); };
   if($("#clrDay")) $("#clrDay").onclick = ()=>{ S.listDay=null; renderList(); };
   if($("#more")) $("#more").onclick = ()=>{ S.listLimit+=100; renderList(); };
   $$("#view button.row[data-trade]").forEach(b=>b.onclick=()=>openDrawer(b.dataset.trade, a));
@@ -1185,7 +1198,7 @@ function rowHtml(x, multi){
   const flag = x.status!=="closed" ? `<span class="flag">${esc(CLOSE_TYPE[x.type]||"보유 중")}</span>` : (x.type==="3"||x.type==="6") ? `<span class="flag hot">${CLOSE_TYPE[x.type]}</span>` : "";
   return `<button class="row" data-trade="${esc(x.id)}">
     <span class="when">${fmtDT(x.uTime)}</span>
-    <span class="sym"><b>${esc(baseOf(x))}</b><span class="m-side side ${x.direction}" hidden>${dirTxt(x.direction)} ${levTxt(x)}</span>${flag}${reasonsOf(x.id).map(r=>`<span class="flag rs">${esc(r)}</span>`).join("")}${multi?`<small>${esc(EX_NAME[exOf(x)]||exOf(x))}</small>`:""}</span>
+    <span class="sym"><b>${esc(baseOf(x))}</b><span class="m-side side ${x.direction}" hidden>${dirTxt(x.direction)} ${levTxt(x)}</span>${flag}${isRegret(x)?`<span class="flag rg">아쉬움</span>`:""}${reasonsOf(x.id).map(r=>`<span class="flag rs">${esc(r)}</span>`).join("")}${multi?`<small>${esc(EX_NAME[exOf(x)]||exOf(x))}</small>`:""}</span>
     <span class="side ${x.direction}">${dirTxt(x.direction)} ${levTxt(x)}</span>
     <span class="r">${fmtPx(x.openAvgPx)}</span>
     <span class="r">${fmtPx(x.closeAvgPx)}</span>
@@ -1226,6 +1239,8 @@ function openDrawer(id, list){
   const shown = VIEW ? all.filter(t=>mis.has(t)) : all;
   $("#dChips").innerHTML = shown.length ? shown.map(t=>`<button class="chip" aria-pressed="${mis.has(t)}" data-tag="${esc(t)}" ${VIEW?"disabled":""}>${esc(t)}</button>`).join("") : `<span class="dim" style="font-size:13px">체크한 실수 없음</span>`;
   if(!VIEW) $$("#dChips .chip").forEach(c=>c.onclick=()=>{ c.setAttribute("aria-pressed", c.getAttribute("aria-pressed")!=="true"); markDirty(700); });
+  $("#dRegret").setAttribute("aria-pressed", !!n.regret); $("#dRegret").disabled = !!VIEW;
+  $("#dRegret").hidden = !!VIEW && !n.regret; $("#dRegretHint").hidden = !!VIEW;
   $("#dMemo").value = n.memo||""; $("#dDone").checked = !!n.reviewed;
   $("#dMemo").readOnly = !!VIEW; if(VIEW) $("#dMemo").placeholder = "작성한 복기가 없어요";
   $("#dState").textContent = VIEW ? (n.reviewed ? "복기 끝" : "") : n.updated ? `${fmtDT(n.updated)} 저장` : (S.live ? "" : "샘플에선 새로고침하면 사라져요");
@@ -1248,7 +1263,8 @@ function saveNote(auto=false){
   // 화면 값은 지금 읽어둠 (저장 중에 다른 매매로 넘어가도 섞이지 않게)
   const pick = sel => $$(sel).filter(c=>c.getAttribute("aria-pressed")==="true").map(c=>c.dataset.tag);
   const note = { memo:$("#dMemo").value.trim(), reasons:pick("#dReasons .chip"), mistakes:pick("#dChips .chip"), reviewed:$("#dDone").checked, updated:Date.now() };
-  const empty = !note.memo && !note.mistakes.length && !note.reasons.length && !note.reviewed;
+  if($("#dRegret").getAttribute("aria-pressed")==="true") note.regret = true;
+  const empty = !note.memo && !note.mistakes.length && !note.reasons.length && !note.reviewed && !note.regret;
   dirty=false;
   const here = () => S.drawerId===id;
   if(here()) $("#dState").textContent="저장 중";
@@ -1573,11 +1589,12 @@ $("#rTo").addEventListener("change", e=>{ const today=kstDay(Date.now()); S.to =
 $("#rToday").onclick = ()=>{ const today=kstDay(Date.now()); S.to = S.to ? "" : today; if(S.to===today){ $("#rTo").disabled=false; try{ $("#rTo").showPicker(); }catch{} } render(); };
 seg("#fSym","sym");
 $("#fSymMore").onchange = e => { S.sym=e.target.value||"all"; render(); };
-$$("button[data-tab]").forEach(b=>b.onclick=()=>{ scrollTo({top:0}); S.tab=b.dataset.tab; if(S.tab!=="list"){ S.listDay=null; S.unreviewed=false; } render(); });
+$$("button[data-tab]").forEach(b=>b.onclick=()=>{ scrollTo({top:0}); S.tab=b.dataset.tab; if(S.tab!=="list"){ S.listDay=null; S.unreviewed=false; S.regret=false; } render(); });
 $("#btnSync").onclick=triggerSync; $("#btnSettings").onclick=()=>openSettings(); $("#btnConnect").onclick=()=>openSettings("gh");
 $("#veil").onclick=closeDrawer; $("#dClose").onclick=closeDrawer; $("#dSave").onclick=saveNote;
 $("#dPrev").onclick=()=>step(-1); $("#dNext").onclick=()=>step(1);
-$("#dMemo").addEventListener("input",()=>markDirty(2500)); $("#dDone").addEventListener("change",()=>markDirty(700));
+$("#dMemo").addEventListener("input",()=>markDirty(2500));
+$("#dRegret").addEventListener("click",()=>{ if(VIEW) return; const b=$("#dRegret"); b.setAttribute("aria-pressed", b.getAttribute("aria-pressed")!=="true"); markDirty(700); }); $("#dDone").addEventListener("change",()=>markDirty(700));
 $$("#settings [data-close]").forEach(b=>b.onclick=closeSettings);
 $$(".stabs button").forEach(b=>b.onclick=()=>setPane(b.dataset.p));
 $("#sTest").onclick=testConn; $("#sSave").onclick=saveGitHub; $("#lSave").onclick=saveLook;
