@@ -1,0 +1,44 @@
+{
+ "okx": [
+  {
+   "id": "4047068851644321792_1793114450641",
+   "instId": "BTC-USDT-SWAP",
+   "base": "BTC",
+   "direction": "short",
+   "lever": 40.0,
+   "cTime": 1793114450641,
+   "fundingFee": 0.587898,
+   "fee": -3.133751
+  },
+  {
+   "id": "4046797182413492224_1793106354267",
+   "instId": "SOXL-USDT-SWAP",
+   "base": "SOXL",
+   "direction": "short",
+   "lever": 3.0,
+   "cTime": 1793106354267,
+   "fundingFee": 0.0,
+   "fee": -0.149625
+  },
+  {
+   "id": "4046728619937943553_1793104310946",
+   "instId": "HUMA-USDT-SWAP",
+   "base": "HUMA",
+   "direction": "long",
+   "lever": 3.0,
+   "cTime": 1793104310946,
+   "fundingFee": 0.008352,
+   "fee": -0.438043
+  },
+  {
+   "id": "4045814608350334976_1793077071278",
+   "instId": "DOOD-USDT-SWAP",
+   "base": "DOOD",
+   "direction": "long",
+   "lever": 3.0,
+   "cTime": 1793077071278,
+   "fundingFee": 11.023153,
+   "fee": -0.298895
+  }
+ ]
+}
