@@ -37,6 +37,7 @@ NOTES_FILE = DATA / "notes.json"
 STATUS_FILE = DATA / "status.json"
 REBATES_FILE = DATA / "rebates.json"
 FX_FILE = DATA / "fx.json"
+OPEN_FILE = DATA / "open.json"   # 보유 중 포지션의 누적 펀딩비 (청산되면 체결 기록에 합쳐짐)
 
 KST = dt.timezone(dt.timedelta(hours=9))
 UA = "trade-journal-sync/2.0"
@@ -48,7 +49,7 @@ class ApiError(RuntimeError):
     pass
 
 
-VERSION = "3.6"
+VERSION = "3.13"
 try:
     _SECRETS = json.loads(os.environ.get("TJ_SECRETS") or "{}")
 except ValueError:
@@ -205,6 +206,20 @@ class OKX:
         bal = self.get("/api/v5/account/balance")
         return num(bal[0].get("totalEq")) if bal else None
 
+    def open_positions(self):
+        """보유 중 포지션. fundingFee = 포지션을 연 뒤 지금까지 누적 펀딩비 (+받음 / -냄)."""
+        out = []
+        for r in self.get("/api/v5/account/positions") or []:
+            pos = num(r.get("pos")) or 0
+            if not pos or r.get("instType") not in ("SWAP", "FUTURES"):
+                continue
+            side = r.get("posSide")
+            direction = side if side in ("long", "short") else ("long" if pos > 0 else "short")
+            out.append({"id": f"{r.get('posId')}_{r.get('cTime')}", "instId": r.get("instId", ""), "base": r.get("instId", "").split("-")[0],
+                        "direction": direction, "lever": num(r.get("lever")), "cTime": int(r.get("cTime") or 0),
+                        "fundingFee": round(num(r.get("fundingFee")) or 0.0, 6), "fee": round(num(r.get("fee")) or 0.0, 6)})
+        return out
+
     def rebates(self, since_ms):
         """수수료 페이백 입금 내역 (자금 계좌 내역 type 173, 메모 'Fee rebate'). since_ms 이후만."""
         out, after, pages = [], None, 0
@@ -341,6 +356,19 @@ class Bitget:
                 t["lever"], t["leverEst"] = lev, True
         return t
 
+    def open_positions(self):
+        """보유 중 포지션. totalFee = 포지션 보유 중 누적 펀딩비."""
+        out = []
+        for product in self.products:
+            for r in self.get("/api/v2/mix/position/all-position", {"productType": product}) or []:
+                if not num(r.get("total")):
+                    continue
+                sym = r.get("symbol", "")
+                out.append({"id": f"bg_{sym}_{r.get('holdSide')}_{r.get('cTime')}", "instId": sym, "base": sym.replace("USDT", "").replace("USDC", "").replace("USD", ""),
+                            "direction": r.get("holdSide", ""), "lever": num(r.get("leverage")), "cTime": int(r.get("cTime") or 0),
+                            "fundingFee": round(num(r.get("totalFee")) or 0.0, 6), "fee": None})
+        return out
+
     def equity(self):
         total = 0.0
         for product in self.products:
@@ -460,6 +488,20 @@ def main():
         except ApiError as e:
             print(f"[{ad.name}] 페이백 조회 실패: {e}")
     changed_reb = dump_json(REBATES_FILE, reb) if reb else False
+
+    # 보유 중 포지션의 누적 펀딩비 (실패해도 수집은 계속)
+    opened = load_json(OPEN_FILE, {})
+    for ad in adapters:
+        if not status.get(ad.name, {}).get("ok"):
+            continue
+        try:
+            opened[ad.name] = ad.open_positions()
+            print(f"[{ad.name}] 보유 중 {len(opened[ad.name])}개, 누적 펀딩비 {sum(x['fundingFee'] for x in opened[ad.name]):+.4f}")
+        except ApiError as e:
+            print(f"[{ad.name}] 보유 포지션 조회 실패: {e}")
+    for k in [k for k in opened if k not in {a.name for a in adapters}]:
+        opened.pop(k)
+    changed_reb |= dump_json(OPEN_FILE, opened)
 
     trades = sorted(by_id.values(), key=lambda x: x["uTime"], reverse=True)
     changed = dump_json(TRADES_FILE, {"version": 2, "trades": trades})

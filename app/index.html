@@ -530,7 +530,7 @@ var TJSeal=(()=>{var M1=Object.create;var kf=Object.defineProperty;var T1=Object
 const DEFAULT_REASONS = ["지표","스캐너","작도","기타"];
 const DEFAULT_TAGS = ["손절 미준수","근거 없는 진입","추격 진입","조기 익절","원칙 밖 추가매수","과한 레버리지·비중","보복 매매","혼조 구간 진입"];
 const CLOSE_TYPE = {"1":"부분청산","2":"전체청산","3":"강제청산","4":"부분 강제청산","5":"ADL","6":"ADL"};
-const APP_VERSION = "3.12";
+const APP_VERSION = "3.13";
 const EXCHANGES = {
   okx: { name:"OKX", url:"https://www.okx.com/account/my-api",
     fields:[["API Key","OKX_API_KEY"],["Secret Key","OKX_SECRET_KEY"],["Passphrase","OKX_PASSPHRASE"]],
@@ -635,14 +635,17 @@ async function ghSaveNotes(mutate, message){
   throw new Error("다른 기기와 동시에 저장됐어요. 다시 저장해 주세요.");
 }
 
+// 보유 중 포지션 (누적 펀딩비). 청산되면 체결 기록의 fundingFee로 들어감
+const flatOpen = o => Object.entries(o||{}).flatMap(([ex,a])=>Array.isArray(a)?a.map(x=>({...x, exchange:ex})):[]);
+const openNow = () => (S.open||[]).filter(x=>S.connected.has(x.exchange) && (S.ex==="all"||S.ex===x.exchange) && (S.sym==="all"||S.sym===x.base) && (S.dir==="all"||S.dir===x.direction));
 /* 로드 */
 async function loadAll(){
   $("#view").innerHTML = '<div class="loading">불러오는 중</div>';
   if(VIEW){
     document.body.classList.add("view"); $("#viewTag").hidden = false; $("#sample").hidden = true;
     try{
-      const [tr, eq, st, nt, rb, fx] = await Promise.all([rawGet("data/trades.json"), rawGet("data/equity.json"), rawGet("data/status.json"), rawGet("data/notes.json"), rawGet("data/rebates.json"), rawGet("data/fx.json").catch(()=>null)]);
-      S.rebates = flatRebates(rb); S.fx = fx;
+      const [tr, eq, st, nt, rb, fx, op] = await Promise.all([rawGet("data/trades.json"), rawGet("data/equity.json"), rawGet("data/status.json"), rawGet("data/notes.json"), rawGet("data/rebates.json"), rawGet("data/fx.json").catch(()=>null), rawGet("data/open.json").catch(()=>null)]);
+      S.rebates = flatRebates(rb); S.fx = fx; S.open = flatOpen(op);
       if(!tr) throw new Error("이 매매일지는 지금 공개되어 있지 않아요.");
       S.allTrades = tr.trades||[]; S.equity = eq||{days:{}}; S.status = st||{}; S.notes = nt||{}; S.live = true;
       const fromStatus = Object.keys(S.status);
@@ -669,8 +672,8 @@ async function loadAll(){
     }
   } else if(isLive()){
     try{
-      const [tr, eq, st, nt, rb, fx] = await Promise.all([ghRaw("data/trades.json"), ghRaw("data/equity.json"), ghRaw("data/status.json"), ghNotes(), ghRaw("data/rebates.json").catch(()=>null), ghRaw("data/fx.json").catch(()=>null)]);
-      S.rebates = flatRebates(rb); S.fx = fx;
+      const [tr, eq, st, nt, rb, fx, op] = await Promise.all([ghRaw("data/trades.json"), ghRaw("data/equity.json"), ghRaw("data/status.json"), ghNotes(), ghRaw("data/rebates.json").catch(()=>null), ghRaw("data/fx.json").catch(()=>null), ghRaw("data/open.json").catch(()=>null)]);
+      S.rebates = flatRebates(rb); S.fx = fx; S.open = flatOpen(op);
       S.allTrades = ((tr && tr.trades) || []); S.equity = eq || {days:{}}; S.status = st || {}; S.notes = nt.data || {}; S.live = true;
       await loadConnected();
       S.trades = S.allTrades.filter(t=>S.connected.has(exOf(t)));
@@ -818,6 +821,8 @@ function stats(trades, rebs){
   const rs = t.map(x=>x.pnlRatio).filter(v=>v!=null);
   const pf = gl? gw/Math.abs(gl) : (gw>0? Infinity : null);
   const fees = t.reduce((s,x)=>s+(x.fee||0)+(x.fundingFee||0)+(x.liqPenalty||0),0);
+  const funding = t.reduce((s,x)=>s+(x.fundingFee||0),0), fundPaid = t.reduce((s,x)=>s+Math.min(0,x.fundingFee||0),0), fundRecv = t.reduce((s,x)=>s+Math.max(0,x.fundingFee||0),0);
+  const liq = t.reduce((s,x)=>s+(x.liqPenalty||0),0), liqN = t.filter(x=>x.liqPenalty).length, tradeCost = fees - funding - liq;
   const holds = t.map(x=>x.uTime-x.cTime).filter(v=>v>0);
   const startEq = n ? equityOn(kstDay(t[0].uTime)) : null;
   let cum=0, peak=0, mdd=0, mddPct=0;
@@ -832,7 +837,7 @@ function stats(trades, rebs){
   for(const e of ev){ cum+=e.v; if(cum>peak) peak=cum; const dd=cum-peak; if(dd<mdd) mdd=dd; if(startEq){ const p=dd/(startEq+peak); if(p<mddPct) mddPct=p; } curve.push({x:e.x,y:cum,dd,tr:e.tr||null,reb:e.reb||null}); }
   let maxW=0,maxL=0,cw=0,cl=0; for(const x of t){ if(x.realizedPnl>0){cw++;cl=0;} else if(x.realizedPnl<0){cl++;cw=0;} maxW=Math.max(maxW,cw); maxL=Math.max(maxL,cl); }
   return { t, n, wins:W.length, losses:L.length, gw, gl, total, avgWin, avgLoss, winRate, payoff,
-    exp: n? total/n : null, expR: rs.length? rs.reduce((a,b)=>a+b,0)/rs.length : null, pf, fees,
+    funding, fundPaid, fundRecv, tradeCost, liq, liqN, exp: n? total/n : null, expR: rs.length? rs.reduce((a,b)=>a+b,0)/rs.length : null, pf, fees,
     hold: holds.length? holds.reduce((a,b)=>a+b,0)/holds.length : null, curve, mdd, mddPct: startEq? mddPct : null,
     maxW, maxL, cur: cw? `${cw}연승 중` : cl? `${cl}연패 중` : "",
     top: [...t].filter(x=>x.realizedPnl>0).sort((a,b)=>b.realizedPnl-a.realizedPnl).slice(0,3),
@@ -939,7 +944,9 @@ function renderDash(){
   const rg = s.t.filter(isRegret), rgSum = rg.reduce((a,x)=>a+x.realizedPnl,0);
   if(!s.n){ $("#view").innerHTML = `<div class="empty">${periodName()}에 청산한 매매가 없어요.${open?` 부분청산 후 보유 중인 포지션이 ${open}개 있어요.`:""}</div>`; return; }
   const pf = s.pf===Infinity ? "∞" : s.pf!=null ? s.pf.toFixed(2) : "–";
-  const feeShare = (s.total - s.fees)>0 && s.fees<0 ? `수수료 전 손익의 ${Math.round(Math.abs(s.fees/(s.total-s.fees))*100)}%` : "";
+  const gross = s.total - s.fees;
+  const feeShare = gross>0 && s.tradeCost<0 ? `수수료 전 손익의 ${Math.round(Math.abs(s.tradeCost/gross)*100)}%` : "";
+  const op = openNow(), fundOpen = op.reduce((a,x)=>a+(x.fundingFee||0),0);
   const subParts = [];
   if(s.ret!=null) subParts.push(`<span class="${tone(s.ret)}">${fmtPct(s.ret,2)}</span> 자산 대비`);
   if(s.rebate) subParts.push(rebOn() ? `페이백 ${fmtS(s.rebate)}${s.rebEst?"(추정)":""} 포함` : `페이백 ${fmtS(s.rebate)}${s.rebEst?"(추정)":""} 별도`);
@@ -966,7 +973,8 @@ function renderDash(){
         <div><dt>최장 연속</dt><dd>${s.maxW}연승 ${s.maxL}연패<small>${s.cur||"&nbsp;"}</small></dd></div>
         <div><dt>평균 보유</dt><dd>${fmtDur(s.hold)}</dd></div>
         <div><dt title="거래소에서 돌려받은 수수료. 매매 건별이 아니라 입금된 시각 기준">수수료 페이백</dt><dd class="${tone(s.rebate)}">${s.rebate?fmtS(s.rebate):"–"}${s.rebate?`<small>${krw(s.rebate)}</small>`:""}<small>${s.tradeFees? `낸 수수료 ${fmtN(s.tradeFees,1)}의 ${Math.round(s.rebate/s.tradeFees*100)}%`:"&nbsp;"}${s.rebEst?", 추정":""}</small></dd></div>
-        <div><dt title="거래 수수료와 펀딩비 합계">수수료·펀딩비</dt><dd class="${tone(s.fees)}">${fmtS(s.fees,1)}<small>${krw(s.fees)||"&nbsp;"}</small><small>${feeShare||"&nbsp;"}</small></dd></div>
+        <div><dt title="진입·청산 때 낸 거래 수수료">거래 수수료</dt><dd class="${tone(s.tradeCost)}">${fmtS(s.tradeCost,1)}<small>${krw(s.tradeCost)||"&nbsp;"}</small><small>${feeShare||"&nbsp;"}</small>${s.liq?`<small class="n">강제청산 패널티 <span class="${tone(s.liq)}">${fmtS(s.liq,1)}</span> (${s.liqN}건)</small>`:""}</dd></div>
+        <div><dt title="포지션 보유 중 정산된 펀딩비. +는 받은 돈, −는 낸 돈. 청산한 매매의 실현손익에 이미 들어 있어요">펀딩비</dt><dd class="${tone(s.funding)}">${s.funding?fmtS(s.funding,2):"–"}<small class="n">${(s.fundPaid||s.fundRecv)?`낸 ${fmtN(Math.abs(s.fundPaid),2)}, 받은 ${fmtN(s.fundRecv,2)}`:"&nbsp;"}</small>${fundOpen?`<small class="n">보유 중 <span class="${tone(fundOpen)}">${fmtS(fundOpen,2)}</span> 쌓이는 중</small>`:""}</dd></div>
         <div><dt>복기</dt><dd>${reviewed} / ${s.n}<small><button class="textbtn" id="goUnrev">${s.n-reviewed?`안 한 매매 ${s.n-reviewed}건 보기`:"모두 복기했어요"}</button></small></dd></div>
         <div><dt title="복기에서 '아쉬운 진입'으로 체크한 매매">아쉬운 진입</dt><dd>${rg.length}건${rg.length?` <span class="n ${tone(rgSum)}" style="font-size:13px">${fmtS(rgSum,1)}</span>`:""}<small>${rg.length?`<button class="textbtn" id="goRegret">모아보기</button>`:"복기에서 체크하면 모여요"}</small></dd></div>
       </dl>
@@ -1228,8 +1236,10 @@ function openDrawer(id, list){
     ["가격 변동", move!=null?`<span class="${tone(move)}">${fmtPct(move,2)}</span>`:"–"], ["최대 수량", x.openMaxPos!=null?`${fmtN(x.openMaxPos, x.openMaxPos%1?4:0)} ${unit}`:"–"],
     ["포지션 규모", x.notional!=null?fmtN(x.notional)+" USDT":"–"], ["증거금", x.margin!=null?fmtN(x.margin)+" USDT"+(x.leverEst?" (추정)":""):"–"],
     ["수수료 전 손익", `<span class="${tone(x.pnl)}">${fmtS(x.pnl)}</span>`], ["거래 수수료", fmtS(x.fee,4)],
-    ["펀딩비", fmtS(x.fundingFee,4)], ["청산 패널티", x.liqPenalty?fmtS(x.liqPenalty,4):"0"],
+    ["펀딩비", `<span class="${tone(x.fundingFee)}">${fmtS(x.fundingFee,4)}</span>`], ["청산 패널티", x.liqPenalty?fmtS(x.liqPenalty,4):"0"],
   ];
+  const live = x.status!=="closed" && (S.open||[]).find(o=>o.id===x.id);
+  if(live) f.push(["남은 포지션 펀딩비", `<span class="${tone(live.fundingFee)}">${fmtS(live.fundingFee,4)}</span>`], ["", `<span class="dim" style="font-size:12px">전체 청산 때 손익에 반영</span>`]);
   $("#dFacts").innerHTML = f.map(([k,v])=>`<div><dt>${k}</dt><dd>${v}</dd></div>`).join("") + (x.leverEst?`<div style="grid-column:1/-1;border:0"><dt style="font-size:12px">* 이 거래소는 기록에 배율이 없어 현재 설정 배율로 추정했어요</dt></div>`:"");
   const rs = new Set(n.reasons||[]), allR = [...reasons(), ...[...rs].filter(r=>!reasons().includes(r))];
   const shownR = VIEW ? allR.filter(r=>rs.has(r)) : allR;
@@ -1528,7 +1538,7 @@ function makeDemo(){
   const gauss=()=>{ let u=0,v=0; while(!u) u=rnd(); while(!v) v=rnd(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); };
   const syms=[["BTC",68000,0.01,.38],["ETH",3400,0.1,.2],["SOL",165,1,.14],["XRP",0.62,100,.08],["DOGE",0.16,1000,.07],["SUI",1.9,1,.07],["PEPE",0.0000118,10000000,.06]];
   const pick=()=>{ let r=rnd(),acc=0; for(const x of syms){ acc+=x[3]; if(r<=acc) return x; } return syms[0]; };
-  const px=Object.fromEntries(syms.map(x=>[x[0],x[1]])), now=Date.now(), DAY=86400000, trades=[], notes={};
+  const px=Object.fromEntries(syms.map(x=>[x[0],x[1]])), now=Date.now(), DAY=86400000, trades=[], notes={}, openPos=[];
   const memos=["15분봉 EMA200 정배열 확인하고 HMA233 밴드 터치에서 진입. 계획대로 1차 익절.","1시간봉이 역배열인데 15분 반등만 보고 들어감. 상위 프레임을 무시했다.","손절가에 닿았는데 버티다 손실이 커졌다. 다음엔 진입과 동시에 손절 주문.","스캐너 신호로 진입. 거래량 동반 돌파 확인 후.","10% 익절 기준보다 일찍 정리. 추세가 남아 있었다.",""];
   let t=now-118*DAY;
   for(let i=0;i<400;i++){
@@ -1564,6 +1574,7 @@ function makeDemo(){
       type:partial?"1":"2", status:partial?"partial":"closed", cTime, uTime, lever, openAvgPx:open, closeAvgPx:open*(1+(dir==="long"?1:-1)*mv),
       openMaxPos:Math.round(notional/(open*ctVal)), posUnit:"contract", pnl, fee, fundingFee:0, liqPenalty:0, realizedPnl:r, pnlRatio:r/margin,
       notional:Math.round(notional*100)/100, margin});
+    if(partial) openPos.push({id, exchange:"okx", instId:`${sym}-USDT-SWAP`, base:sym, direction:dir, lever, cTime, fundingFee:-0.4182, fee});
     if(k===1) notes[id]={memo:"1시간봉 역배열인데 15분 반등 숏. 손절은 지켰다.", mistakes:[DEFAULT_TAGS[7]], reviewed:true, updated:uTime+600000};
   });
   trades.sort((a,b)=>b.uTime-a.uTime);
@@ -1574,7 +1585,7 @@ function makeDemo(){
   }
   // 샘플 페이백: 낸 수수료의 20%가 몇 시간 뒤 입금
   const rebates = trades.filter(x=>x.status==="closed").map(x=>({ex:"okx", ts:Math.min(now-30000, x.uTime+3*3600000), amt:+(tradeFee(x)*0.2).toFixed(4)})).sort((a,b)=>a.ts-b.ts);
-  return {trades, equity:{days}, notes, status:{okx:{ok:true}}, rebates, fx:{usdt_krw:1395, src:"샘플 시세", ts:now}};
+  return {trades, equity:{days}, notes, status:{okx:{ok:true}}, rebates, open:openPos, fx:{usdt_krw:1395, src:"샘플 시세", ts:now}};
 }
 
 /* 이벤트 */
