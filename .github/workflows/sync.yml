@@ -3,8 +3,8 @@ name: sync-trades
 
 on:
   schedule:
-    # 2시간마다 (UTC 기준 7분)
-    - cron: "7 */2 * * *"
+    # 1시간마다 (매시 7분, 정각 몰림 피함)
+    - cron: "7 * * * *"
   workflow_dispatch: {}   # 사이트의 [동기화] 버튼과 거래소 연결 확인이 이걸 호출
 
 permissions:
