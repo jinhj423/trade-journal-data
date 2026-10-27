@@ -161,8 +161,12 @@ table.t tr.click{cursor:pointer} table.t tr.click:hover td{background:var(--hove
 .side{font-weight:600}
 .side.long{color:var(--up)} .side.short{color:var(--down)}
 .empty{color:var(--text-2);font-size:14px;padding:28px 0}
-.bw{display:grid;grid-template-columns:1fr auto;gap:10px;width:100%;padding:12px 0;border-bottom:1px solid var(--line);text-align:left}
-.bw:last-of-type{border-bottom:0}
+.bwg+.bwg{margin-top:14px}
+.bwh{font-size:12px;color:var(--text-3);padding-bottom:4px;border-bottom:1px solid var(--line)}
+.bwn{font-size:13px;color:var(--text-3);margin:10px 0 0}
+.bw .rk{font-family:var(--num);font-size:13px;color:var(--text-3);padding-top:1px}
+.bw{display:grid;grid-template-columns:16px 1fr auto;gap:10px;width:100%;padding:12px 0;border-bottom:1px solid var(--line);text-align:left}
+.bwg .bw:last-child{border-bottom:0}
 .bw:hover{background:var(--hover)}
 .bw .r{text-align:right}
 .bw .what{font-size:12px;color:var(--text-3)}
@@ -520,7 +524,7 @@ var TJSeal=(()=>{var M1=Object.create;var kf=Object.defineProperty;var T1=Object
 const DEFAULT_REASONS = ["지표","스캐너","작도","기타"];
 const DEFAULT_TAGS = ["손절 미준수","근거 없는 진입","추격 진입","조기 익절","원칙 밖 추가매수","과한 레버리지·비중","보복 매매","혼조 구간 진입"];
 const CLOSE_TYPE = {"1":"부분청산","2":"전체청산","3":"강제청산","4":"부분 강제청산","5":"ADL","6":"ADL"};
-const APP_VERSION = "3.10";
+const APP_VERSION = "3.11";
 const EXCHANGES = {
   okx: { name:"OKX", url:"https://www.okx.com/account/my-api",
     fields:[["API Key","OKX_API_KEY"],["Secret Key","OKX_SECRET_KEY"],["Passphrase","OKX_PASSPHRASE"]],
@@ -825,6 +829,8 @@ function stats(trades, rebs){
     exp: n? total/n : null, expR: rs.length? rs.reduce((a,b)=>a+b,0)/rs.length : null, pf, fees,
     hold: holds.length? holds.reduce((a,b)=>a+b,0)/holds.length : null, curve, mdd, mddPct: startEq? mddPct : null,
     maxW, maxL, cur: cw? `${cw}연승 중` : cl? `${cl}연패 중` : "",
+    top: [...t].filter(x=>x.realizedPnl>0).sort((a,b)=>b.realizedPnl-a.realizedPnl).slice(0,3),
+    bottom: [...t].filter(x=>x.realizedPnl<0).sort((a,b)=>a.realizedPnl-b.realizedPnl).slice(0,3),
     best: t.reduce((a,x)=>!a||x.realizedPnl>a.realizedPnl?x:a,null), worst: t.reduce((a,x)=>!a||x.realizedPnl<a.realizedPnl?x:a,null),
     rebate, tradeFees: t.reduce((a,x)=>a+tradeFee(x),0),
     net: total + (rebOn()? rebate : 0),
@@ -995,10 +1001,12 @@ function symTable(t){
     g.map(r=>`<tr><td><b>${esc(r.k)}</b></td><td>${r.n}</td><td>${wr(r.wr)}</td><td class="bar-c">${dbar(r.pnl,max)}</td><td class="${tone(r.pnl)}">${fmtS(r.pnl,1)}</td></tr>`).join("")}</tbody></table>`;
 }
 function bestWorst(s){
-  const one = (what, x) => x ? `<button class="bw" data-trade="${esc(x.id)}">
-    <span><span class="what">${what}</span><br><span class="sym">${esc(baseOf(x))}</span> <span class="side ${x.direction}">${dirTxt(x.direction)} ${levTxt(x)}</span><br><span class="meta n">${fmtDT(x.uTime)}, ${fmtDur(x.uTime-x.cTime)} 보유</span></span>
-    <span class="r"><span class="amt n ${tone(x.realizedPnl)}">${fmtS(x.realizedPnl)}</span><br><span class="meta n">${fmtPct(x.pnlRatio)}${krw(x.realizedPnl)?", "+krw(x.realizedPnl):""}</span></span></button>` : "";
-  return one("가장 크게 번 매매", s.best) + (s.worst && s.worst.realizedPnl<0 ? one("가장 크게 잃은 매매", s.worst) : "");
+  const one = (rank, x) => `<button class="bw" data-trade="${esc(x.id)}">
+    <span class="rk n">${rank}</span>
+    <span><span class="sym">${esc(baseOf(x))}</span> <span class="side ${x.direction}">${dirTxt(x.direction)} ${levTxt(x)}</span><br><span class="meta n">${fmtDT(x.uTime)}, ${fmtDur(x.uTime-x.cTime)} 보유</span></span>
+    <span class="r"><span class="amt n ${tone(x.realizedPnl)}">${fmtS(x.realizedPnl)}</span><br><span class="meta n">${fmtPct(x.pnlRatio)}${krw(x.realizedPnl)?", "+krw(x.realizedPnl):""}</span></span></button>`;
+  const group = (title, list, none) => `<div class="bwg"><div class="bwh">${title}</div>${list.length ? list.map((x,i)=>one(i+1,x)).join("") : `<p class="bwn">${none}</p>`}</div>`;
+  return group("가장 크게 번 매매", s.top, "이 기간에 수익 낸 매매가 없어요.") + group("가장 크게 잃은 매매", s.bottom, "이 기간에 손실 난 매매가 없어요.");
 }
 function reasonTable(t){
   const rows = reasons().map(r=>({key:r, label:esc(r), ...rowStats(t.filter(x=>reasonsOf(x.id).includes(r)))}));
