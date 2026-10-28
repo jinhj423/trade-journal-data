@@ -545,7 +545,7 @@ var TJSeal=(()=>{var M1=Object.create;var kf=Object.defineProperty;var T1=Object
 const DEFAULT_REASONS = ["지표","스캐너","작도","기타"];
 const DEFAULT_TAGS = ["손절 미준수","근거 없는 진입","추격 진입","조기 익절","원칙 밖 추가매수","과한 레버리지·비중","보복 매매","혼조 구간 진입"];
 const CLOSE_TYPE = {"1":"부분청산","2":"전체청산","3":"강제청산","4":"부분 강제청산","5":"ADL","6":"ADL"};
-const APP_VERSION = "3.14";
+const APP_VERSION = "3.15";
 const EXCHANGES = {
   okx: { name:"OKX", url:"https://www.okx.com/account/my-api",
     fields:[["API Key","OKX_API_KEY"],["Secret Key","OKX_SECRET_KEY"],["Passphrase","OKX_PASSPHRASE"]],
@@ -962,8 +962,47 @@ function maybeSaveView(){
     catch(e){ /* 다음 변경 때 다시 시도 */ }
   }, 1500);
 }
+/* 뒤로가기: 탭 이동·상세 창·설정을 기록에 쌓아서, 뒤로 버튼이 사이트를 닫지 않고 한 단계씩 돌아가게 */
+const navKey = () => JSON.stringify({tab:S.tab, day:S.listDay, un:S.unreviewed, rg:S.regret, rs:S.reason});
+const exitGuard = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true || matchMedia("(pointer: coarse)").matches;
+let lastNav = null, navLock = false, overlayOn = false, backAt = 0;
+function navPush(){
+  if(navLock) return;
+  const k = navKey(); if(k===lastNav) return;
+  try{
+    if(lastNav===null){
+      if(exitGuard()){ history.replaceState({tj:"root"}, ""); history.pushState({tj:"nav", k}, ""); }
+      else history.replaceState({tj:"nav", k}, "");
+    } else history.pushState({tj:"nav", k}, "");
+  }catch{}
+  lastNav = k;
+}
+function navOverlay(){ if(overlayOn) return; overlayOn = true; try{ history.pushState({tj:"ov", k:lastNav}, ""); }catch{} }
+function navPop(){ if(!overlayOn) return; overlayOn = false; try{ history.back(); }catch{} }
+addEventListener("popstate", e=>{
+  const st = e.state || {};
+  // 열려 있는 창이 있으면 그것만 닫기
+  if($("#settings").classList.contains("show") || S.drawerId){
+    overlayOn = false;
+    if($("#settings").classList.contains("show")) hideSettings(); else hideDrawer();
+    if(st.tj!=="nav") return;
+  }
+  overlayOn = false;
+  if(st.tj==="nav"){
+    if(st.k===lastNav) return;
+    try{ const v = JSON.parse(st.k); navLock = true; Object.assign(S, {tab:v.tab, listDay:v.day, unreviewed:v.un, regret:v.rg, reason:v.rs}); render(); scrollTo({top:0}); }
+    finally{ navLock = false; lastNav = st.k; }
+  } else if(st.tj==="root"){
+    // 맨 처음 화면에서 뒤로: 한 번 더 누르면 닫힘
+    if(Date.now()-backAt < 2000){ history.back(); return; }
+    backAt = Date.now(); toast("뒤로 버튼을 한 번 더 누르면 닫혀요", 2000);
+    try{ history.pushState({tj:"nav", k:lastNav}, ""); }catch{}
+  }
+});
+
 function render(){
   maybeSaveView();
+  navPush();
   $$("#fPeriod button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.v===S.period));
   $$("#fDir button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.v===S.dir));
   $$("#fEx button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.v===S.ex));
@@ -1329,14 +1368,16 @@ function openDrawer(id, list){
   $("#dPrev").disabled = i<=0; $("#dNext").disabled = i<0 || i>=S.drawerList.length-1;
   dirty=false;
   $("#drawer").classList.add("show"); $("#veil").classList.add("show"); $("#drawer").setAttribute("aria-hidden","false"); $(".d-body").scrollTop=0;
+  navOverlay();
 }
 // 자동 저장: 칩은 누르고 잠시 뒤, 메모는 입력을 멈추고 2.5초 뒤 저장. 닫거나 다른 매매로 넘어갈 때도 저장
 let saveT=null, saveChain=Promise.resolve();
 function markDirty(delay=2500){ dirty=true; $("#dState").textContent="저장 대기"; clearTimeout(saveT); saveT=setTimeout(()=>saveNote(true), delay); }
-function closeDrawer(){
+function hideDrawer(){
   if(dirty){ clearTimeout(saveT); saveNote(true); }
   $("#drawer").classList.remove("show"); $("#veil").classList.remove("show"); $("#drawer").setAttribute("aria-hidden","true"); S.drawerId=null;
 }
+function closeDrawer(){ hideDrawer(); navPop(); }
 function step(k){ const i=S.drawerList.findIndex(t=>t.id===S.drawerId), nx=S.drawerList[i+k]; if(nx) openDrawer(nx.id, S.drawerList); }
 function saveNote(auto=false){
   const id=S.drawerId; if(!id || VIEW) return;
@@ -1373,9 +1414,11 @@ function openSettings(pane){
   $("#sToken").value=cfg.token||""; $("#sUpdown").value=cfg.updown||"kr"; $("#sTags").value=tags().join("\n"); $("#sReasons").value=reasons().join("\n"); $("#sRebate").checked = rebOn(); $("#sKrw").checked = krwOn(); if(S.fx) $("#sKrwHelp").textContent = `수집할 때 받아 둔 시세로 환산한 대략값이에요. 지금 기준: ${fxTitle()}`; $("#sResult").innerHTML="";
   setPane(typeof pane==="string" ? pane : (isLive() ? "ex" : "gh"));
   $("#settings").classList.add("show");
+  navOverlay();
 }
 window.openSettings = openSettings;
-const closeSettings = () => $("#settings").classList.remove("show");
+const hideSettings = () => $("#settings").classList.remove("show");
+const closeSettings = () => { hideSettings(); navPop(); };
 const formCfg = () => ({...cfg, owner:$("#sOwner").value.trim(), repo:$("#sRepo").value.trim(), branch:$("#sBranch").value.trim()||"main", wf:$("#sWf").value.trim()||"sync.yml", token:$("#sToken").value.trim()});
 async function testConn(){
   const prev=cfg; cfg=formCfg(); const out=[]; $("#sResult").textContent="확인 중";
