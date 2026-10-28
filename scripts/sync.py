@@ -213,7 +213,7 @@ class OKX:
         r2 = lambda v: round(v, 2) if v is not None else None
         usdt = next((d for d in b.get("details", []) if d.get("ccy") == "USDT"), {})
         out = {"equity": r2(num(b.get("totalEq"))), "avail": r2(num(usdt.get("availBal")) if usdt else num(b.get("availEq"))),
-               "margin": r2(num(b.get("imr"))), "upl": r2(num(b.get("upl")) if b.get("upl") not in (None, "") else sum(num(d.get("upl")) or 0 for d in b.get("details", [])))}
+               "margin": r2(num(b.get("imr")) or num(usdt.get("imr")) or num(usdt.get("frozenBal"))), "upl": r2(num(b.get("upl")) if b.get("upl") not in (None, "") else sum(num(d.get("upl")) or 0 for d in b.get("details", [])))}
         try:  # 자금·적립 계좌까지 합친 평가액 (USDT 기준)
             v = (self.get("/api/v5/asset/asset-valuation", {"ccy": "USDT"}) or [{}])[0]
             det = v.get("details") or {}

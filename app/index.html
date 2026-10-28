@@ -716,7 +716,7 @@ function balPanel(){
       ${chg!=null?`<div class="chg" title="오늘 첫 수집(0시 무렵) 잔고 대비. 입출금도 포함돼요">오늘 <span class="${tone(chg)}">${fmtS(chg)} (${fmtPct(chg/start,2)})</span></div>`:""}</div>
     <dl>
       ${item("사용 가능", has("avail")?fmtN(sum("avail")):"–")}
-      ${item("증거금 사용", has("margin")?fmtN(sum("margin")):"–")}
+      ${item("증거금 사용", has("margin")?fmtN(sum("margin")):op.length?fmtN(op.reduce((a,x)=>a+(x.margin||0),0)):"–")}
       ${item("미실현 손익", fmtS(upl), tone(upl))}
       ${fund>0.01?item("자금·적립 계좌", fmtN(fund)):""}
     </dl>
