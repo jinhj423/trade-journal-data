@@ -71,9 +71,11 @@
   "reasons": [
    "스캐너"
   ],
-  "mistakes": [],
+  "mistakes": [
+   "원칙 밖 추가매수"
+  ],
   "reviewed": false,
-  "updated": 1793150225016,
+  "updated": 1793150229910,
   "regret": true
  },
  "4046837925077241856_1793107568493": {
