@@ -49,7 +49,7 @@ class ApiError(RuntimeError):
     pass
 
 
-VERSION = "3.13"
+VERSION = "3.14"
 try:
     _SECRETS = json.loads(os.environ.get("TJ_SECRETS") or "{}")
 except ValueError:
@@ -208,15 +208,24 @@ class OKX:
 
     def open_positions(self):
         """보유 중 포지션. fundingFee = 포지션을 연 뒤 지금까지 누적 펀딩비 (+받음 / -냄)."""
-        out = []
+        out, ct = [], None
         for r in self.get("/api/v5/account/positions") or []:
             pos = num(r.get("pos")) or 0
             if not pos or r.get("instType") not in ("SWAP", "FUTURES"):
                 continue
+            if ct is None:
+                ct = self.ct_vals()
             side = r.get("posSide")
             direction = side if side in ("long", "short") else ("long" if pos > 0 else "short")
-            out.append({"id": f"{r.get('posId')}_{r.get('cTime')}", "instId": r.get("instId", ""), "base": r.get("instId", "").split("-")[0],
-                        "direction": direction, "lever": num(r.get("lever")), "cTime": int(r.get("cTime") or 0),
+            inst = r.get("instId", "")
+            cv = ct.get(inst) or 1.0
+            usd = r.get("ccy", "USDT") in ("USDT", "USDC", "USD")
+            out.append({"id": f"{r.get('posId')}_{r.get('cTime')}", "instId": inst, "base": inst.split("-")[0],
+                        "direction": direction, "lever": num(r.get("lever")), "mgnMode": r.get("mgnMode"), "cTime": int(r.get("cTime") or 0),
+                        "qty": round(abs(pos) * cv, 8) if usd else None, "contracts": abs(pos), "avgPx": num(r.get("avgPx")),
+                        "markPx": num(r.get("markPx")), "liqPx": num(r.get("liqPx")), "upl": round(num(r.get("upl")) or 0.0, 4),
+                        "uplRatio": num(r.get("uplRatio")), "margin": num(r.get("margin")) or num(r.get("imr")),
+                        "notional": round(abs(num(r.get("notionalUsd")) or 0.0), 2), "ccy": r.get("ccy", "USDT"),
                         "fundingFee": round(num(r.get("fundingFee")) or 0.0, 6), "fee": round(num(r.get("fee")) or 0.0, 6)})
         return out
 
@@ -364,8 +373,13 @@ class Bitget:
                 if not num(r.get("total")):
                     continue
                 sym = r.get("symbol", "")
+                qty, avg, mark, margin = num(r.get("total")), num(r.get("openPriceAvg")), num(r.get("markPrice")), num(r.get("marginSize"))
+                upl = num(r.get("unrealizedPL")) or 0.0
                 out.append({"id": f"bg_{sym}_{r.get('holdSide')}_{r.get('cTime')}", "instId": sym, "base": sym.replace("USDT", "").replace("USDC", "").replace("USD", ""),
-                            "direction": r.get("holdSide", ""), "lever": num(r.get("leverage")), "cTime": int(r.get("cTime") or 0),
+                            "direction": r.get("holdSide", ""), "lever": num(r.get("leverage")), "mgnMode": r.get("marginMode"), "cTime": int(r.get("cTime") or 0),
+                            "qty": qty, "contracts": None, "avgPx": avg, "markPx": mark, "liqPx": num(r.get("liquidationPrice")),
+                            "upl": round(upl, 4), "uplRatio": (upl / margin) if margin else None, "margin": margin,
+                            "notional": round(qty * mark, 2) if qty and mark else None, "ccy": r.get("marginCoin", "USDT"),
                             "fundingFee": round(num(r.get("totalFee")) or 0.0, 6), "fee": None})
         return out
 
@@ -490,7 +504,8 @@ def main():
     changed_reb = dump_json(REBATES_FILE, reb) if reb else False
 
     # 보유 중 포지션의 누적 펀딩비 (실패해도 수집은 계속)
-    opened = load_json(OPEN_FILE, {})
+    prev_open = load_json(OPEN_FILE, {})
+    opened = {k: v for k, v in prev_open.items() if k != "ts"}
     for ad in adapters:
         if not status.get(ad.name, {}).get("ok"):
             continue
@@ -499,8 +514,11 @@ def main():
             print(f"[{ad.name}] 보유 중 {len(opened[ad.name])}개, 누적 펀딩비 {sum(x['fundingFee'] for x in opened[ad.name]):+.4f}")
         except ApiError as e:
             print(f"[{ad.name}] 보유 포지션 조회 실패: {e}")
-    for k in [k for k in opened if k not in {a.name for a in adapters}]:
+    for k in [k for k in opened if k != "ts" and k not in {a.name for a in adapters}]:
         opened.pop(k)
+    # 내용이 그대로면 기준 시각도 그대로 (빈 커밋 방지)
+    same = opened == {k: v for k, v in prev_open.items() if k != "ts"}
+    opened["ts"] = prev_open.get("ts") if same and prev_open.get("ts") else int(time.time() * 1000)
     changed_reb |= dump_json(OPEN_FILE, opened)
 
     trades = sorted(by_id.values(), key=lambda x: x["uTime"], reverse=True)

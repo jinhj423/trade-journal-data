@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#000000">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://api.github.com https://raw.githubusercontent.com 'self'; img-src 'self' data:; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://api.github.com https://raw.githubusercontent.com https://www.okx.com https://api.bitget.com 'self'; img-src 'self' data:; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <title>매매일지</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="favicon-32.png" sizes="32x32">
@@ -118,6 +118,17 @@ html{-webkit-tap-highlight-color:transparent}
 .panel > h3{font-size:15px;font-weight:600;margin:0 0 14px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .panel > h3 span{font-size:12px;font-weight:400;color:var(--text-3)}
 #view > * + *{margin-top:12px}
+.pos{margin-bottom:12px}
+.pos > h3 .tot{margin-left:auto;font-size:15px;font-weight:600;font-family:var(--num)}
+.prow{display:grid;grid-template-columns:minmax(120px,1.3fr) repeat(4,minmax(80px,1fr)) minmax(70px,.8fr) 60px minmax(110px,1.1fr);gap:10px;align-items:center;padding:11px 8px;border-bottom:1px solid var(--line);font-size:13px;width:100%;text-align:left;font-variant-numeric:tabular-nums;border-radius:0}
+.prow:last-child{border-bottom:0}
+.prow.h{font-size:12px;color:var(--text-3);padding-top:4px}
+button.prow:hover{background:var(--hover)}
+.prow .r{text-align:right}
+.prow .u{font-family:var(--num);font-weight:600;font-size:14px}
+.prow .u small{display:block;font-weight:400;font-size:12px}
+.prow .sub{display:none}
+.pos .when{font-size:12px;color:var(--text-3);margin:10px 8px 0}
 .grid-top{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:12px;align-items:start}
 .cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 
@@ -353,6 +364,10 @@ label.btn{cursor:pointer}
   .kvl > div{padding:11px 8px 11px 0}
   .kvl > div:nth-last-child(-n+4){border-bottom:1px solid var(--line)}
   .kvl > div:nth-last-child(-n+2){border-bottom:0}
+  .prow.h{display:none}
+  .prow{grid-template-columns:1fr auto;grid-template-areas:"a b" "c b";row-gap:3px;padding:12px 2px}
+  .prow > *{display:none}
+  .prow .s{display:block;grid-area:a} .prow .u{display:block;grid-area:b;align-self:center} .prow .sub{display:block;grid-area:c;font-size:12px;color:var(--text-3)}
   .row.h{display:none}
   .row{grid-template-columns:1fr auto;grid-template-areas:"a b" "c d";row-gap:2px;padding:12px 4px}
   .row > *{display:none}
@@ -530,7 +545,7 @@ var TJSeal=(()=>{var M1=Object.create;var kf=Object.defineProperty;var T1=Object
 const DEFAULT_REASONS = ["지표","스캐너","작도","기타"];
 const DEFAULT_TAGS = ["손절 미준수","근거 없는 진입","추격 진입","조기 익절","원칙 밖 추가매수","과한 레버리지·비중","보복 매매","혼조 구간 진입"];
 const CLOSE_TYPE = {"1":"부분청산","2":"전체청산","3":"강제청산","4":"부분 강제청산","5":"ADL","6":"ADL"};
-const APP_VERSION = "3.13";
+const APP_VERSION = "3.14";
 const EXCHANGES = {
   okx: { name:"OKX", url:"https://www.okx.com/account/my-api",
     fields:[["API Key","OKX_API_KEY"],["Secret Key","OKX_SECRET_KEY"],["Passphrase","OKX_PASSPHRASE"]],
@@ -572,13 +587,14 @@ const isLive = () => !!(cfg.owner && cfg.repo && cfg.token);
 
 const S = { rebates:[], reason:"all", trades:[], allTrades:[], connected:new Set(), secretsOk:false, exMsg:{}, equity:{days:{}}, notes:{}, status:{}, live:false,
   period:"today", from:"", to:"", dir:"all", ex:"all", sym:"all", tab:"dash",
-  calMonth:null, listDay:null, unreviewed:false, regret:false, listLimit:60, drawerId:null, drawerList:[], run:null };
+  calMonth:null, listDay:null, unreviewed:false, regret:false, marks:null, marksTs:0, marksFail:0, marksOff:false, open:[], openTs:{}, listLimit:60, drawerId:null, drawerList:[], run:null };
 
 /* 포맷 */
 const dayFmt = new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit"});
 const partsFmt = new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false});
 const kstDay = ms => dayFmt.format(new Date(ms));
 function parts(ms){ const p = Object.fromEntries(partsFmt.formatToParts(new Date(ms)).map(x=>[x.type,x.value])); if(p.hour==="24") p.hour="00"; return p; }
+const fmtTime = ms => { const p=parts(ms); return `${p.hour}:${p.minute}`; };
 const fmtDT = ms => { const p=parts(ms); return `${+p.month}/${+p.day} ${p.hour}:${p.minute}`; };
 const fmtDTF = ms => { const p=parts(ms); return `${p.year}.${p.month}.${p.day} ${p.hour}:${p.minute}`; };
 function fmtN(n, dp=2){ if(n==null||!isFinite(n)) return "–"; return n.toLocaleString("ko-KR",{minimumFractionDigits:dp,maximumFractionDigits:dp}); }
@@ -635,8 +651,63 @@ async function ghSaveNotes(mutate, message){
   throw new Error("다른 기기와 동시에 저장됐어요. 다시 저장해 주세요.");
 }
 
+// 보유 중 포지션 패널. 목록은 수집 때 갱신, 현재가는 거래소 공개 시세로 15초마다 (막히면 수집 시점 값)
+const markOf = x => (S.marks && S.marks[x.exchange+":"+x.instId]) || x.markPx;
+function livePos(x){
+  const m = markOf(x), sg = x.direction==="short"?-1:1;
+  const upl = (x.qty && x.avgPx && m) ? (m-x.avgPx)*x.qty*sg : x.upl;
+  const notional = (x.qty && m) ? x.qty*m : x.notional;
+  const ratio = x.margin ? upl/x.margin : x.uplRatio;
+  const toLiq = (x.liqPx && m) ? Math.abs(m-x.liqPx)/m : null;
+  return {...x, mark:m, upl, notional, ratio, toLiq};
+}
+function posPanel(){
+  const op = openNow().map(livePos).sort((a,b)=>(b.notional||0)-(a.notional||0));
+  if(!op.length) return "";
+  const tot = op.reduce((a,x)=>a+(x.upl||0),0), ts = (S.openTs||{});
+  const when = S.marksTs ? `현재가 ${fmtTime(S.marksTs)} 기준, 포지션 목록은 ${ts.ts?fmtDT(ts.ts):"마지막 수집"} 수집` : `${ts.ts?fmtDT(ts.ts):"마지막 수집"} 수집 기준${VIEW?"":". 동기화를 누르면 새로 가져와요"}`;
+  const multi = new Set(op.map(x=>x.exchange)).size>1;
+  const row = x => {
+    const tr = S.trades.find(t=>t.id===x.id), tag = tr ? `button class="prow" data-trade="${esc(x.id)}"` : `div class="prow"`;
+    return `<${tag}>
+      <span class="s"><b>${esc(x.base)}</b> <span class="side ${x.direction}">${dirTxt(x.direction)} ${levTxt(x)}</span>${multi?` <small class="dim">${esc(EX_NAME[x.exchange]||x.exchange)}</small>`:""}</span>
+      <span class="r n">${x.notional!=null?fmtN(x.notional,0):"–"}<small class="dim"> USDT</small></span>
+      <span class="r n">${fmtPx(x.avgPx)}</span>
+      <span class="r n">${fmtPx(x.mark)}</span>
+      <span class="r n">${fmtPx(x.liqPx)}${x.toLiq!=null?`<small class="dim"> ${(x.toLiq*100).toFixed(1)}%</small>`:""}</span>
+      <span class="r n ${tone(x.fundingFee)}">${x.fundingFee?fmtS(x.fundingFee,2):"0"}</span>
+      <span class="r mid">${fmtDur(Date.now()-x.cTime)}</span>
+      <span class="r u ${tone(x.upl)}">${fmtS(x.upl)}<small>${fmtPct(x.ratio)}</small></span>
+      <span class="sub n">${fmtPx(x.avgPx)} → ${fmtPx(x.mark)}, ${x.notional!=null?fmtN(x.notional,0)+" USDT":""}, ${fmtDur(Date.now()-x.cTime)}${x.liqPx?`, 청산가 ${fmtPx(x.liqPx)}`:""}</span>
+    </${tag.split(" ")[0]}>`;
+  };
+  return `<section class="panel pos" id="posPanel"><h3>보유 중 포지션 <span>${op.length}개</span><b class="tot ${tone(tot)}">${fmtS(tot)}<small class="dim" style="font-size:12px;font-weight:400"> 미실현</small></b></h3>
+    <div class="prow h"><span>종목</span><span class="r">규모</span><span class="r">진입가</span><span class="r">현재가</span><span class="r">청산가</span><span class="r">펀딩비</span><span class="r">보유</span><span class="r">미실현 손익</span></div>
+    ${op.map(row).join("")}
+    <p class="when">${when}</p></section>`;
+}
+function bindPos(){ $$("#posPanel [data-trade]").forEach(b=>b.onclick=()=>openDrawer(b.dataset.trade, S.trades.filter(t=>t.status!=="closed"))); }
+let marksT=null;
+async function refreshMarks(){
+  clearTimeout(marksT);
+  const op = openNow();
+  if(!op.length || S.tab!=="dash" || S.marksOff){ marksT = null; return; }
+  if(document.visibilityState==="visible"){
+    const exs = new Set(op.map(x=>x.exchange)), got = {...(S.marks||{})};
+    let ok = false;
+    const get = async (url, pick) => { try{ const ac=new AbortController(), to=setTimeout(()=>ac.abort(),6000); const r=await fetch(url,{signal:ac.signal,cache:"no-store"}); clearTimeout(to); if(!r.ok) return; const j=await r.json(); pick(j); ok=true; }catch{} };
+    const jobs = [];
+    if(exs.has("okx")) jobs.push(get("https://www.okx.com/api/v5/public/mark-price?instType=SWAP", j=>(j.data||[]).forEach(d=>got["okx:"+d.instId]=+d.markPx)));
+    if(exs.has("bitget")) jobs.push(get("https://api.bitget.com/api/v2/mix/market/tickers?productType=USDT-FUTURES", j=>(j.data||[]).forEach(d=>got["bitget:"+d.symbol]=+(d.markPrice||d.lastPr))));
+    await Promise.all(jobs);
+    if(ok){ S.marks = got; S.marksTs = Date.now(); S.marksFail = 0; }
+    else if(++S.marksFail >= 2){ S.marksOff = true; }   // 두 번 연속 막히면 수집 시점 값으로만
+    const el = $("#posPanel"); if(el && S.tab==="dash"){ el.outerHTML = posPanel(); bindPos(); }
+  }
+  marksT = setTimeout(refreshMarks, 15000);
+}
 // 보유 중 포지션 (누적 펀딩비). 청산되면 체결 기록의 fundingFee로 들어감
-const flatOpen = o => Object.entries(o||{}).flatMap(([ex,a])=>Array.isArray(a)?a.map(x=>({...x, exchange:ex})):[]);
+const flatOpen = o => Object.entries(o||{}).filter(([k])=>k!=="ts").flatMap(([ex,a])=>Array.isArray(a)?a.map(x=>({...x, exchange:ex})):[]);
 const openNow = () => (S.open||[]).filter(x=>S.connected.has(x.exchange) && (S.ex==="all"||S.ex===x.exchange) && (S.sym==="all"||S.sym===x.base) && (S.dir==="all"||S.dir===x.direction));
 /* 로드 */
 async function loadAll(){
@@ -645,7 +716,7 @@ async function loadAll(){
     document.body.classList.add("view"); $("#viewTag").hidden = false; $("#sample").hidden = true;
     try{
       const [tr, eq, st, nt, rb, fx, op] = await Promise.all([rawGet("data/trades.json"), rawGet("data/equity.json"), rawGet("data/status.json"), rawGet("data/notes.json"), rawGet("data/rebates.json"), rawGet("data/fx.json").catch(()=>null), rawGet("data/open.json").catch(()=>null)]);
-      S.rebates = flatRebates(rb); S.fx = fx; S.open = flatOpen(op);
+      S.rebates = flatRebates(rb); S.fx = fx; S.open = flatOpen(op); S.openTs = {ts: op && op.ts};
       if(!tr) throw new Error("이 매매일지는 지금 공개되어 있지 않아요.");
       S.allTrades = tr.trades||[]; S.equity = eq||{days:{}}; S.status = st||{}; S.notes = nt||{}; S.live = true;
       const fromStatus = Object.keys(S.status);
@@ -673,7 +744,7 @@ async function loadAll(){
   } else if(isLive()){
     try{
       const [tr, eq, st, nt, rb, fx, op] = await Promise.all([ghRaw("data/trades.json"), ghRaw("data/equity.json"), ghRaw("data/status.json"), ghNotes(), ghRaw("data/rebates.json").catch(()=>null), ghRaw("data/fx.json").catch(()=>null), ghRaw("data/open.json").catch(()=>null)]);
-      S.rebates = flatRebates(rb); S.fx = fx; S.open = flatOpen(op);
+      S.rebates = flatRebates(rb); S.fx = fx; S.open = flatOpen(op); S.openTs = {ts: op && op.ts};
       S.allTrades = ((tr && tr.trades) || []); S.equity = eq || {days:{}}; S.status = st || {}; S.notes = nt.data || {}; S.live = true;
       await loadConnected();
       S.trades = S.allTrades.filter(t=>S.connected.has(exOf(t)));
@@ -915,7 +986,7 @@ function render(){
     $("#view").innerHTML = `<div class="onb"><h2>거래소를 연결하세요</h2><p>쓰는 거래소의 읽기 전용 API 키를 한 번 등록하면, 매매 기록이 2시간마다 자동으로 쌓여요. 키는 내 저장소의 암호화된 공간에만 들어가요.</p><button class="btn ditto" id="goEx">거래소 연결</button></div>`;
     $("#goEx").onclick = ()=>openSettings("ex"); return;
   }
-  if(S.tab==="dash") renderDash(); else if(S.tab==="cal") renderCal(); else renderList();
+  if(S.tab==="dash"){ renderDash(); bindPos(); if(!marksT) refreshMarks(); } else if(S.tab==="cal") renderCal(); else renderList();
 }
 function dbar(v, max){
   if(!max) return "";
@@ -942,7 +1013,7 @@ function renderDash(){
   const open = all.filter(t=>t.status!=="closed").length;
   const reviewed = s.t.filter(t=>S.notes[t.id] && S.notes[t.id].reviewed).length;
   const rg = s.t.filter(isRegret), rgSum = rg.reduce((a,x)=>a+x.realizedPnl,0);
-  if(!s.n){ $("#view").innerHTML = `<div class="empty">${periodName()}에 청산한 매매가 없어요.${open?` 부분청산 후 보유 중인 포지션이 ${open}개 있어요.`:""}</div>`; return; }
+  if(!s.n){ $("#view").innerHTML = posPanel() + `<div class="empty">${periodName()}에 청산한 매매가 없어요.${open?` 부분청산 후 보유 중인 포지션이 ${open}개 있어요.`:""}</div>`; return; }
   const pf = s.pf===Infinity ? "∞" : s.pf!=null ? s.pf.toFixed(2) : "–";
   const gross = s.total - s.fees;
   const feeShare = gross>0 && s.tradeCost<0 ? `수수료 전 손익의 ${Math.round(Math.abs(s.tradeCost/gross)*100)}%` : "";
@@ -952,7 +1023,7 @@ function renderDash(){
   if(s.rebate) subParts.push(rebOn() ? `페이백 ${fmtS(s.rebate)}${s.rebEst?"(추정)":""} 포함` : `페이백 ${fmtS(s.rebate)}${s.rebEst?"(추정)":""} 별도`);
   subParts.push(`${s.n}건 청산`);
   if(open) subParts.push(`${open}건 보유 중`);
-  $("#view").innerHTML = `
+  $("#view").innerHTML = posPanel() + `
   <div class="grid-top">
     <section class="panel ov">
       <div class="lbl">실현손익 <i>${periodName()}, 수수료·펀딩비${rebOn()?"·페이백":""} 포함</i></div>
@@ -1574,9 +1645,11 @@ function makeDemo(){
       type:partial?"1":"2", status:partial?"partial":"closed", cTime, uTime, lever, openAvgPx:open, closeAvgPx:open*(1+(dir==="long"?1:-1)*mv),
       openMaxPos:Math.round(notional/(open*ctVal)), posUnit:"contract", pnl, fee, fundingFee:0, liqPenalty:0, realizedPnl:r, pnlRatio:r/margin,
       notional:Math.round(notional*100)/100, margin});
-    if(partial) openPos.push({id, exchange:"okx", instId:`${sym}-USDT-SWAP`, base:sym, direction:dir, lever, cTime, fundingFee:-0.4182, fee});
+    if(partial){ const qty=notional/open*0.5, mk=open*(1+(dir==="long"?1:-1)*mv*1.6), sg=dir==="long"?1:-1;
+      openPos.push({id, exchange:"okx", instId:`${sym}-USDT-SWAP`, base:sym, direction:dir, lever, mgnMode:"cross", cTime, qty, avgPx:open, markPx:mk, liqPx:open*(1-sg*0.9/lever), upl:(mk-open)*qty*sg, margin:margin*0.5, notional:qty*mk, fundingFee:-0.4182, fee}); }
     if(k===1) notes[id]={memo:"1시간봉 역배열인데 15분 반등 숏. 손절은 지켰다.", mistakes:[DEFAULT_TAGS[7]], reviewed:true, updated:uTime+600000};
   });
+  { const qty=0.05, avg=px.BTC*0.994, mk=px.BTC; openPos.push({id:"demo_btc", exchange:"okx", instId:"BTC-USDT-SWAP", base:"BTC", direction:"long", lever:20, mgnMode:"cross", cTime:now-26*3600000, qty, avgPx:avg, markPx:mk, liqPx:avg*0.955, upl:(mk-avg)*qty, margin:avg*qty/20, notional:qty*mk, fundingFee:-0.8123, fee:-1.2}); }
   trades.sort((a,b)=>b.uTime-a.uTime);
   const days={}, eq={okx:5000}, byDay=groupBy(trades.filter(x=>x.status==="closed"),x=>kstDay(x.uTime));
   for(let d=now-120*DAY; d<=now; d+=DAY){
