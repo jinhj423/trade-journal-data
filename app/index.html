@@ -156,12 +156,13 @@ button.prow:hover{background:var(--hover)}
 .dd-cap{display:flex;justify-content:space-between;font-size:12px;color:var(--text-3);margin:12px 0 4px}
 
 /* 지표 목록 */
-.kv{display:flex;flex-direction:column}
-.kvl{margin:0;display:flex;flex-direction:column}
-.kvl > div{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
-.kvl > div:last-child{border-bottom:0}
-.kvl dt{font-size:13px;color:var(--text-2);cursor:help}
-.kvl dd{margin:0;text-align:right;font-family:var(--num);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.kv{display:flex;flex-direction:column;align-self:stretch}
+/* 성과: 2열 격자 (라벨 위, 값 아래). 줄 구분선은 위쪽에만 그려서 칸 수가 홀수여도 깔끔하게 */
+.kvl{margin:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:16px;--kc:2}
+.kvl > div{display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start;gap:1px;padding:10px 0;min-width:0}
+.kvl > div:nth-child(n+3){border-top:1px solid var(--line)}
+.kvl dt{font-size:12px;color:var(--text-2);cursor:help}
+.kvl dd{margin:0;text-align:left;font-family:var(--num);font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
 .kvl dd small{display:block;font-size:12px;font-weight:400;color:var(--text-3);margin-top:1px;font-family:var(--body)}
 .kvl dd small .textbtn{font-size:12px}
 
@@ -325,10 +326,9 @@ label.btn{cursor:pointer}
   .grid-top{grid-template-columns:1fr}
   .cols{grid-template-columns:1fr}
   /* 지표를 거래소 앱처럼 2열 격자로: 라벨 위, 값 아래 */
-  .kvl{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0}
-  .kvl > div{flex-direction:column;align-items:flex-start;gap:2px;padding:12px 12px 12px 0;border-bottom:1px solid var(--line)}
-  .kvl > div:nth-last-child(-n+4){border-bottom:0}
-  .kvl dd{text-align:left;font-size:16px}
+  .kvl{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .kvl > div:nth-child(n+3){border-top:0}
+  .kvl > div:nth-child(n+5){border-top:1px solid var(--line)}
 }
 @media (max-width:760px){
   .wrap{padding:0 12px calc(76px + env(safe-area-inset-bottom))}
@@ -370,9 +370,8 @@ label.btn{cursor:pointer}
   .panel{padding:16px 14px;border-radius:10px}
   .ov .big{font-size:28px}
   .kvl{grid-template-columns:1fr 1fr}
-  .kvl > div{padding:11px 8px 11px 0}
-  .kvl > div:nth-last-child(-n+4){border-bottom:1px solid var(--line)}
-  .kvl > div:nth-last-child(-n+2){border-bottom:0}
+  .kvl > div{padding:11px 0}
+  .kvl > div:nth-child(n+3){border-top:1px solid var(--line)}
   .bal{grid-template-columns:1fr}
   .bal dl{grid-template-columns:1fr 1fr;gap:10px 16px;padding-top:10px;border-top:1px solid var(--line)}
   .prow.h{display:none}
@@ -556,7 +555,7 @@ var TJSeal=(()=>{var M1=Object.create;var kf=Object.defineProperty;var T1=Object
 const DEFAULT_REASONS = ["지표","스캐너","작도","기타"];
 const DEFAULT_TAGS = ["손절 미준수","근거 없는 진입","추격 진입","조기 익절","원칙 밖 추가매수","과한 레버리지·비중","보복 매매","혼조 구간 진입"];
 const CLOSE_TYPE = {"1":"부분청산","2":"전체청산","3":"강제청산","4":"부분 강제청산","5":"ADL","6":"ADL"};
-const APP_VERSION = "3.19";
+const APP_VERSION = "3.20";
 const EXCHANGES = {
   okx: { name:"OKX", url:"https://www.okx.com/account/my-api",
     fields:[["API Key","OKX_API_KEY"],["Secret Key","OKX_SECRET_KEY"],["Passphrase","OKX_PASSPHRASE"]],
@@ -1118,15 +1117,15 @@ function renderDash(){
       <dl class="kvl">
         <div><dt title="손익 0인 매매는 제외">승률</dt><dd>${s.winRate!=null?(s.winRate*100).toFixed(1)+"%":"–"}<small>${s.wins}승 ${s.losses}패</small></dd></div>
         <div><dt title="평균 수익 ÷ 평균 손실">손익비</dt><dd>${s.payoff!=null?s.payoff.toFixed(2):"–"}<small class="n">평균 ${fmtS(s.avgWin,1)} / ${fmtS(s.avgLoss,1)}</small></dd></div>
-        <div><dt title="평균 손실 ÷ 평균 수익. 손실 한 번을 메우려면 평균 수익이 몇 번 필요한지">손실 1번 = 수익</dt><dd class="${lossX!=null&&lossX>=3?"down":""}">${lossX!=null?(lossX<10?lossX.toFixed(1):Math.round(lossX))+"번":"–"}<small>${lossX!=null?`승률 ${(100*lossX/(1+lossX)).toFixed(0)}% 넘어야 본전`:"&nbsp;"}</small></dd></div>
-        <div><dt title="한 건당 평균 실현손익. 0보다 커야 길게 봐서 남아요">건당 기대값</dt><dd class="${tone(s.exp)}">${fmtS(s.exp)}<small>${krw(s.exp)||"&nbsp;"}</small><small>증거금 대비 ${fmtPct(s.expR)}</small></dd></div>
+        <div><dt title="평균 손실 ÷ 평균 수익. 손실 한 번을 메우려면 평균 수익이 몇 번 필요한지">손실 1번 = 수익</dt><dd class="${lossX!=null&&lossX>=3?"down":""}">${lossX!=null?(lossX<10?lossX.toFixed(1):Math.round(lossX))+"번":"–"}<small>${lossX!=null?`승률 ${(100*lossX/(1+lossX)).toFixed(0)}% 넘어야 본전`:""}</small></dd></div>
+        <div><dt title="한 건당 평균 실현손익. 0보다 커야 길게 봐서 남아요">건당 기대값</dt><dd class="${tone(s.exp)}">${fmtS(s.exp)}<small>증거금 대비 ${fmtPct(s.expR)}</small></dd></div>
         <div><dt title="총수익 ÷ 총손실. 1.5 이상이면 양호">Profit Factor</dt><dd>${pf}<small>번 돈 ${fmtN(s.gw,0)}, 잃은 돈 ${fmtN(Math.abs(s.gl),0)}</small></dd></div>
-        <div><dt title="강제청산(부분 포함)으로 끝난 매매">강제청산</dt><dd class="${s.liqT?"down":""}">${s.liqT}건<small class="n">${s.liqT?`${fmtS(s.liqLoss,0)}${s.gl?`, 전체 손실의 ${Math.round(s.liqLoss/s.gl*100)}%`:""}`:"&nbsp;"}</small></dd></div>
-        <div><dt>최장 연속</dt><dd>${s.maxW}연승 ${s.maxL}연패<small>${s.cur||"&nbsp;"}</small></dd></div>
+        <div><dt title="강제청산(부분 포함)으로 끝난 매매">강제청산</dt><dd class="${s.liqT?"down":""}">${s.liqT}건<small class="n">${s.liqT?`${fmtS(s.liqLoss,0)}${s.gl?`, 전체 손실의 ${Math.round(s.liqLoss/s.gl*100)}%`:""}`:""}</small></dd></div>
+        <div><dt>최장 연속</dt><dd>${s.maxW}연승 ${s.maxL}연패${s.cur ? `<small>${s.cur}</small>` : ""}</dd></div>
         <div><dt>평균 보유</dt><dd>${fmtDur(s.hold)}</dd></div>
-        <div><dt title="거래소에서 돌려받은 수수료. 매매 건별이 아니라 입금된 시각 기준">수수료 페이백</dt><dd class="${tone(s.rebate)}">${s.rebate?fmtS(s.rebate):"–"}${s.rebate?`<small>${krw(s.rebate)}</small>`:""}<small>${s.tradeFees? `낸 수수료 ${fmtN(s.tradeFees,1)}의 ${Math.round(s.rebate/s.tradeFees*100)}%`:"&nbsp;"}${s.rebEst?", 추정":""}</small></dd></div>
-        <div><dt title="진입·청산 때 낸 거래 수수료">거래 수수료</dt><dd class="${tone(s.tradeCost)}">${fmtS(s.tradeCost,1)}<small>${krw(s.tradeCost)||"&nbsp;"}</small><small>${feeShare||"&nbsp;"}</small>${s.liq?`<small class="n">청산 패널티 <span class="${tone(s.liq)}">${fmtS(s.liq,1)}</span> 별도</small>`:""}</dd></div>
-        <div><dt title="포지션 보유 중 정산된 펀딩비. +는 받은 돈, −는 낸 돈. 청산한 매매의 실현손익에 이미 들어 있어요">펀딩비</dt><dd class="${tone(s.funding)}">${s.funding?fmtS(s.funding,2):"–"}<small class="n">${(s.fundPaid||s.fundRecv)?`낸 ${fmtN(Math.abs(s.fundPaid),2)}, 받은 ${fmtN(s.fundRecv,2)}`:"&nbsp;"}</small>${fundOpen?`<small class="n">보유 중 <span class="${tone(fundOpen)}">${fmtS(fundOpen,2)}</span> 쌓이는 중</small>`:""}</dd></div>
+        <div><dt title="거래소에서 돌려받은 수수료. 매매 건별이 아니라 입금된 시각 기준">수수료 페이백</dt><dd class="${tone(s.rebate)}">${s.rebate?fmtS(s.rebate):"–"}<small>${s.tradeFees? `낸 수수료 ${fmtN(s.tradeFees,1)}의 ${Math.round(s.rebate/s.tradeFees*100)}%`:""}${s.rebEst?", 추정":""}</small></dd></div>
+        <div><dt title="진입·청산 때 낸 거래 수수료">거래 수수료</dt><dd class="${tone(s.tradeCost)}">${fmtS(s.tradeCost,1)}${feeShare ? `<small>${feeShare}</small>` : ""}${s.liq?`<small class="n">청산 패널티 <span class="${tone(s.liq)}">${fmtS(s.liq,1)}</span> 별도</small>`:""}</dd></div>
+        <div><dt title="포지션 보유 중 정산된 펀딩비. +는 받은 돈, −는 낸 돈. 청산한 매매의 실현손익에 이미 들어 있어요">펀딩비</dt><dd class="${tone(s.funding)}">${s.funding?fmtS(s.funding,2):"–"}<small class="n">${(s.fundPaid||s.fundRecv)?`낸 ${fmtN(Math.abs(s.fundPaid),2)}, 받은 ${fmtN(s.fundRecv,2)}`:""}</small>${fundOpen?`<small class="n">보유 중 <span class="${tone(fundOpen)}">${fmtS(fundOpen,2)}</span> 쌓이는 중</small>`:""}</dd></div>
         <div><dt>복기</dt><dd>${reviewed} / ${s.n}<small><button class="textbtn" id="goUnrev">${s.n-reviewed?`안 한 매매 ${s.n-reviewed}건 보기`:"모두 복기했어요"}</button></small></dd></div>
         <div><dt title="복기에서 '아쉬운 진입'으로 체크한 매매">아쉬운 진입</dt><dd>${rg.length}건${rg.length?` <span class="n ${tone(rgSum)}" style="font-size:13px">${fmtS(rgSum,1)}</span>`:""}<small>${rg.length?`<button class="textbtn" id="goRegret">모아보기</button>`:"복기에서 체크하면 모여요"}</small></dd></div>
       </dl>
