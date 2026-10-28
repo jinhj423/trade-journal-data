@@ -37,6 +37,7 @@ NOTES_FILE = DATA / "notes.json"
 STATUS_FILE = DATA / "status.json"
 REBATES_FILE = DATA / "rebates.json"
 FX_FILE = DATA / "fx.json"
+BALANCE_FILE = DATA / "balance.json"  # 지금 계좌 잔고 (수집 때마다)
 OPEN_FILE = DATA / "open.json"   # 보유 중 포지션의 누적 펀딩비 (청산되면 체결 기록에 합쳐짐)
 
 KST = dt.timezone(dt.timedelta(hours=9))
@@ -49,7 +50,7 @@ class ApiError(RuntimeError):
     pass
 
 
-VERSION = "3.14"
+VERSION = "3.17"
 try:
     _SECRETS = json.loads(os.environ.get("TJ_SECRETS") or "{}")
 except ValueError:
@@ -205,6 +206,23 @@ class OKX:
     def equity(self):
         bal = self.get("/api/v5/account/balance")
         return num(bal[0].get("totalEq")) if bal else None
+
+    def balance(self):
+        """거래 계좌 잔고 + (가능하면) 계정 전체 평가액."""
+        b = (self.get("/api/v5/account/balance") or [{}])[0]
+        r2 = lambda v: round(v, 2) if v is not None else None
+        usdt = next((d for d in b.get("details", []) if d.get("ccy") == "USDT"), {})
+        out = {"equity": r2(num(b.get("totalEq"))), "avail": r2(num(usdt.get("availBal")) if usdt else num(b.get("availEq"))),
+               "margin": r2(num(b.get("imr"))), "upl": r2(num(b.get("upl")) if b.get("upl") not in (None, "") else sum(num(d.get("upl")) or 0 for d in b.get("details", [])))}
+        try:  # 자금·적립 계좌까지 합친 평가액 (USDT 기준)
+            v = (self.get("/api/v5/asset/asset-valuation", {"ccy": "USDT"}) or [{}])[0]
+            det = v.get("details") or {}
+            out["total"] = r2(num(v.get("totalBal")))
+            out["funding"] = r2(num(det.get("funding")))
+            out["earn"] = r2(num(det.get("earn")))
+        except ApiError as e:
+            print(f"  [안내] 전체 평가액 조회 실패: {e}")
+        return out
 
     def open_positions(self):
         """보유 중 포지션. fundingFee = 포지션을 연 뒤 지금까지 누적 펀딩비 (+받음 / -냄)."""
@@ -383,6 +401,16 @@ class Bitget:
                             "fundingFee": round(num(r.get("totalFee")) or 0.0, 6), "fee": None})
         return out
 
+    def balance(self):
+        eq = avail = margin = upl = 0.0
+        for product in self.products:
+            for a in self.get("/api/v2/mix/account/accounts", {"productType": product}) or []:
+                eq += num(a.get("usdtEquity")) or num(a.get("accountEquity")) or 0.0
+                avail += num(a.get("crossedMaxAvailable")) or num(a.get("available")) or 0.0
+                margin += num(a.get("locked")) or 0.0
+                upl += num(a.get("unrealizedPL")) or 0.0
+        return {"equity": round(eq, 2), "avail": round(avail, 2), "margin": round(margin, 2), "upl": round(upl, 2)}
+
     def equity(self):
         total = 0.0
         for product in self.products:
@@ -502,6 +530,22 @@ def main():
         except ApiError as e:
             print(f"[{ad.name}] 페이백 조회 실패: {e}")
     changed_reb = dump_json(REBATES_FILE, reb) if reb else False
+
+    # 지금 계좌 잔고 (실패해도 수집은 계속)
+    bal = {}
+    for ad in adapters:
+        if not status.get(ad.name, {}).get("ok"):
+            continue
+        try:
+            bal[ad.name] = ad.balance()
+            print(f"[{ad.name}] 잔고 {bal[ad.name]}")
+        except ApiError as e:
+            print(f"[{ad.name}] 잔고 조회 실패: {e}")
+    if bal:
+        prev_bal = load_json(BALANCE_FILE, {})
+        same = bal == {k: v for k, v in prev_bal.items() if k != "ts"}
+        bal["ts"] = prev_bal.get("ts") if same and prev_bal.get("ts") else int(time.time() * 1000)
+        changed_reb |= dump_json(BALANCE_FILE, bal)
 
     # 보유 중 포지션의 누적 펀딩비 (실패해도 수집은 계속)
     prev_open = load_json(OPEN_FILE, {})

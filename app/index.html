@@ -118,6 +118,15 @@ html{-webkit-tap-highlight-color:transparent}
 .panel > h3{font-size:15px;font-weight:600;margin:0 0 14px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .panel > h3 span{font-size:12px;font-weight:400;color:var(--text-3)}
 #view > * + *{margin-top:12px}
+.bal{margin-bottom:12px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 32px;align-items:end}
+.bal .lbl{font-size:13px;color:var(--text-2)}
+.bal .big{font-family:var(--num);font-size:28px;font-weight:600;letter-spacing:-.02em;line-height:1.2;margin:4px 0 2px;font-variant-numeric:tabular-nums}
+.bal .big small{font-size:13px;font-weight:500;color:var(--text-2);margin-left:6px;letter-spacing:0}
+.bal .chg{font-size:13px;color:var(--text-2);margin-top:2px}
+.bal dl{display:grid;grid-template-columns:repeat(4,auto);gap:4px 28px;margin:0}
+.bal dl div{display:flex;flex-direction:column;gap:2px}
+.bal dt{font-size:12px;color:var(--text-3)} .bal dd{margin:0;font-family:var(--num);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.bal .when{grid-column:1/-1;font-size:12px;color:var(--text-3);margin:4px 0 0}
 .pos{margin-bottom:12px}
 .pos > h3 .tot{margin-left:auto;font-size:15px;font-weight:600;font-family:var(--num)}
 .prow{display:grid;grid-template-columns:minmax(120px,1.3fr) repeat(4,minmax(80px,1fr)) minmax(70px,.8fr) 60px minmax(110px,1.1fr);gap:10px;align-items:center;padding:11px 8px;border-bottom:1px solid var(--line);font-size:13px;width:100%;text-align:left;font-variant-numeric:tabular-nums;border-radius:0}
@@ -364,6 +373,8 @@ label.btn{cursor:pointer}
   .kvl > div{padding:11px 8px 11px 0}
   .kvl > div:nth-last-child(-n+4){border-bottom:1px solid var(--line)}
   .kvl > div:nth-last-child(-n+2){border-bottom:0}
+  .bal{grid-template-columns:1fr}
+  .bal dl{grid-template-columns:1fr 1fr;gap:10px 16px;padding-top:10px;border-top:1px solid var(--line)}
   .prow.h{display:none}
   .prow{grid-template-columns:1fr auto;grid-template-areas:"a b" "c b";row-gap:3px;padding:12px 2px}
   .prow > *{display:none}
@@ -545,7 +556,7 @@ var TJSeal=(()=>{var M1=Object.create;var kf=Object.defineProperty;var T1=Object
 const DEFAULT_REASONS = ["지표","스캐너","작도","기타"];
 const DEFAULT_TAGS = ["손절 미준수","근거 없는 진입","추격 진입","조기 익절","원칙 밖 추가매수","과한 레버리지·비중","보복 매매","혼조 구간 진입"];
 const CLOSE_TYPE = {"1":"부분청산","2":"전체청산","3":"강제청산","4":"부분 강제청산","5":"ADL","6":"ADL"};
-const APP_VERSION = "3.16";
+const APP_VERSION = "3.17";
 const EXCHANGES = {
   okx: { name:"OKX", url:"https://www.okx.com/account/my-api",
     fields:[["API Key","OKX_API_KEY"],["Secret Key","OKX_SECRET_KEY"],["Passphrase","OKX_PASSPHRASE"]],
@@ -686,6 +697,32 @@ function posPanel(){
     ${op.map(row).join("")}
     <p class="when">${when}</p></section>`;
 }
+// 계좌 잔고: 수집 때 값. 현재가를 받아오면 보유 포지션의 손익 변화만큼 실시간으로 보정
+function balPanel(){
+  const b = S.bal; if(!b) return "";
+  const exs = Object.keys(b).filter(k=>k!=="ts" && S.connected.has(k) && (S.ex==="all"||S.ex===k));
+  if(!exs.length) return "";
+  const sum = f => exs.reduce((a,k)=>a+(b[k][f]||0),0), has = f => exs.some(k=>b[k][f]!=null);
+  let eq = sum("equity"), upl = sum("upl");
+  const op = (S.open||[]).filter(x=>exs.includes(x.exchange));
+  const live = !!(S.marksTs && op.length);
+  if(live){ const d = op.reduce((a,x)=>a+((livePos(x).upl||0)-(x.upl||0)),0); eq += d; upl += d; }
+  const start = equityOn(kstDay(Date.now())), chg = start ? eq - start : null;
+  const fund = has("funding") ? sum("funding") + sum("earn") : 0;
+  const item = (k, v, cls="") => `<div><dt>${k}</dt><dd class="${cls}">${v}</dd></div>`;
+  return `<section class="panel bal" id="balPanel">
+    <div><div class="lbl">계좌 잔고 <span class="dim" style="font-size:12px">${exs.length>1?exs.map(k=>EX_NAME[k]||k).join(" + ")+", ":""}선물 계좌</span></div>
+      <div class="big">${fmtN(eq)}<small>USDT</small></div>${kr(eq) ? `<span class="krw" title="${esc(fxTitle())}">${krw(eq,false)}</span>` : ""}
+      ${chg!=null?`<div class="chg" title="오늘 첫 수집(0시 무렵) 잔고 대비. 입출금도 포함돼요">오늘 <span class="${tone(chg)}">${fmtS(chg)} (${fmtPct(chg/start,2)})</span></div>`:""}</div>
+    <dl>
+      ${item("사용 가능", has("avail")?fmtN(sum("avail")):"–")}
+      ${item("증거금 사용", has("margin")?fmtN(sum("margin")):"–")}
+      ${item("미실현 손익", fmtS(upl), tone(upl))}
+      ${fund>0.01?item("자금·적립 계좌", fmtN(fund)):""}
+    </dl>
+    <p class="when">${live?`현재가 ${fmtTime(S.marksTs)} 기준 실시간 추정, `:""}${b.ts?fmtDT(b.ts)+" 수집":""}</p>
+  </section>`;
+}
 function bindPos(){ $$("#posPanel [data-trade]").forEach(b=>b.onclick=()=>openDrawer(b.dataset.trade, S.trades.filter(t=>t.status!=="closed"))); }
 let marksT=null;
 async function refreshMarks(){
@@ -703,6 +740,7 @@ async function refreshMarks(){
     if(ok){ S.marks = got; S.marksTs = Date.now(); S.marksFail = 0; }
     else if(++S.marksFail >= 2){ S.marksOff = true; }   // 두 번 연속 막히면 수집 시점 값으로만
     const el = $("#posPanel"); if(el && S.tab==="dash"){ el.outerHTML = posPanel(); bindPos(); }
+    const bp = $("#balPanel"); if(bp && S.tab==="dash") bp.outerHTML = balPanel();
   }
   marksT = setTimeout(refreshMarks, 15000);
 }
@@ -715,8 +753,8 @@ async function loadAll(){
   if(VIEW){
     document.body.classList.add("view"); $("#viewTag").hidden = false; $("#sample").hidden = true;
     try{
-      const [tr, eq, st, nt, rb, fx, op] = await Promise.all([rawGet("data/trades.json"), rawGet("data/equity.json"), rawGet("data/status.json"), rawGet("data/notes.json"), rawGet("data/rebates.json"), rawGet("data/fx.json").catch(()=>null), rawGet("data/open.json").catch(()=>null)]);
-      S.rebates = flatRebates(rb); S.fx = fx; S.open = flatOpen(op); S.openTs = {ts: op && op.ts};
+      const [tr, eq, st, nt, rb, fx, op, bl] = await Promise.all([rawGet("data/trades.json"), rawGet("data/equity.json"), rawGet("data/status.json"), rawGet("data/notes.json"), rawGet("data/rebates.json"), rawGet("data/fx.json").catch(()=>null), rawGet("data/open.json").catch(()=>null), rawGet("data/balance.json").catch(()=>null)]);
+      S.rebates = flatRebates(rb); S.fx = fx; S.open = flatOpen(op); S.openTs = {ts: op && op.ts}; S.bal = bl || null;
       if(!tr) throw new Error("이 매매일지는 지금 공개되어 있지 않아요.");
       S.allTrades = tr.trades||[]; S.equity = eq||{days:{}}; S.status = st||{}; S.notes = nt||{}; S.live = true;
       const fromStatus = Object.keys(S.status);
@@ -743,8 +781,8 @@ async function loadAll(){
     }
   } else if(isLive()){
     try{
-      const [tr, eq, st, nt, rb, fx, op] = await Promise.all([ghRaw("data/trades.json"), ghRaw("data/equity.json"), ghRaw("data/status.json"), ghNotes(), ghRaw("data/rebates.json").catch(()=>null), ghRaw("data/fx.json").catch(()=>null), ghRaw("data/open.json").catch(()=>null)]);
-      S.rebates = flatRebates(rb); S.fx = fx; S.open = flatOpen(op); S.openTs = {ts: op && op.ts};
+      const [tr, eq, st, nt, rb, fx, op, bl] = await Promise.all([ghRaw("data/trades.json"), ghRaw("data/equity.json"), ghRaw("data/status.json"), ghNotes(), ghRaw("data/rebates.json").catch(()=>null), ghRaw("data/fx.json").catch(()=>null), ghRaw("data/open.json").catch(()=>null), ghRaw("data/balance.json").catch(()=>null)]);
+      S.rebates = flatRebates(rb); S.fx = fx; S.open = flatOpen(op); S.openTs = {ts: op && op.ts}; S.bal = bl || null;
       S.allTrades = ((tr && tr.trades) || []); S.equity = eq || {days:{}}; S.status = st || {}; S.notes = nt.data || {}; S.live = true;
       await loadConnected();
       S.trades = S.allTrades.filter(t=>S.connected.has(exOf(t)));
@@ -1052,7 +1090,7 @@ function renderDash(){
   const open = all.filter(t=>t.status!=="closed").length;
   const reviewed = s.t.filter(t=>S.notes[t.id] && S.notes[t.id].reviewed).length;
   const rg = s.t.filter(isRegret), rgSum = rg.reduce((a,x)=>a+x.realizedPnl,0);
-  if(!s.n){ $("#view").innerHTML = posPanel() + `<div class="empty">${periodName()}에 청산한 매매가 없어요.${open?` 부분청산 후 보유 중인 포지션이 ${open}개 있어요.`:""}</div>`; return; }
+  if(!s.n){ $("#view").innerHTML = balPanel() + posPanel() + `<div class="empty">${periodName()}에 청산한 매매가 없어요.${open?` 부분청산 후 보유 중인 포지션이 ${open}개 있어요.`:""}</div>`; return; }
   const pf = s.pf===Infinity ? "∞" : s.pf!=null ? s.pf.toFixed(2) : "–";
   const gross = s.total - s.fees;
   const feeShare = gross>0 && s.tradeCost<0 ? `수수료 전 손익의 ${Math.round(Math.abs(s.tradeCost/gross)*100)}%` : "";
@@ -1062,7 +1100,7 @@ function renderDash(){
   if(s.rebate) subParts.push(rebOn() ? `페이백 ${fmtS(s.rebate)}${s.rebEst?"(추정)":""} 포함` : `페이백 ${fmtS(s.rebate)}${s.rebEst?"(추정)":""} 별도`);
   subParts.push(`${s.n}건 청산`);
   if(open) subParts.push(`${open}건 보유 중`);
-  $("#view").innerHTML = posPanel() + `
+  $("#view").innerHTML = balPanel() + posPanel() + `
   <div class="grid-top">
     <section class="panel ov">
       <div class="lbl">실현손익 <i>${periodName()}, 수수료·펀딩비${rebOn()?"·페이백":""} 포함</i></div>
@@ -1710,7 +1748,9 @@ function makeDemo(){
   }
   // 샘플 페이백: 낸 수수료의 20%가 몇 시간 뒤 입금
   const rebates = trades.filter(x=>x.status==="closed").map(x=>({ex:"okx", ts:Math.min(now-30000, x.uTime+3*3600000), amt:+(tradeFee(x)*0.2).toFixed(4)})).sort((a,b)=>a.ts-b.ts);
-  return {trades, equity:{days}, notes, status:{okx:{ok:true}}, rebates, open:openPos, fx:{usdt_krw:1395, src:"샘플 시세", ts:now}};
+  const upl0 = openPos.reduce((a,x)=>a+x.upl,0), mg0 = openPos.reduce((a,x)=>a+x.margin,0);
+  const bal = {okx:{equity:Math.round((eq.okx+upl0)*100)/100, avail:Math.round((eq.okx-mg0)*100)/100, margin:Math.round(mg0*100)/100, upl:Math.round(upl0*100)/100, funding:320.5, earn:0}, ts:now-20*60000};
+  return {trades, equity:{days}, notes, status:{okx:{ok:true}}, rebates, open:openPos, bal, fx:{usdt_krw:1395, src:"샘플 시세", ts:now}};
 }
 
 /* 이벤트 */
