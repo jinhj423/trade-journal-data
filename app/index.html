@@ -140,6 +140,35 @@ button.prow:hover{background:var(--hover)}
 .pos .when{font-size:12px;color:var(--text-3);margin:10px 8px 0}
 .grid-top{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:12px;align-items:start}
 .cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.rk4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.rk4 > div{padding:14px 14px 14px 0;display:flex;flex-direction:column;gap:3px;min-width:0}
+.rk4 > div + div{padding-left:14px;border-left:1px solid var(--line)}
+.rk4 dt{font-size:12px;color:var(--text-3)}
+.rk4 dd{margin:0;font-family:var(--num);font-size:22px;font-weight:600;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.rk4 small{font-size:12px;color:var(--text-3);font-family:var(--body);font-weight:400;letter-spacing:0}
+.tail{margin:16px 0 4px}
+.tail .cap{font-size:12px;color:var(--text-3);margin-bottom:6px;display:flex;justify-content:space-between;gap:10px}
+.tail .bar{display:flex;gap:2px;height:22px;overflow:hidden}
+.tail .bar button{flex:1 1 0;min-width:2px;height:100%;border-radius:2px;background:var(--raise);padding:0}
+.tail .bar button.top{background-color:var(--down)}
+.tail .bar button.liq{background-image:repeating-linear-gradient(135deg,transparent 0 3px,rgba(0,0,0,.5) 3px 5px)}
+.tail .bar button.liq:not(.top){background-color:var(--down-wash)}
+.tail .bar button:hover{outline:1px solid var(--text);outline-offset:1px}
+.sim{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:24px;margin-top:20px;padding-top:18px;border-top:1px solid var(--line)}
+.sim h4{font-size:14px;font-weight:600;margin:0 0 4px}
+.sim .ctl{display:flex;flex-direction:column;gap:14px}
+.sim .ctl label{display:block;font-size:12px;color:var(--text-3);margin-bottom:6px}
+.sim .ctl .chipset{flex-wrap:wrap}
+.sim .ctl .capr{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.sim .ctl input{width:76px;height:30px;font:inherit;font-size:13px;background:var(--bg);color:var(--text);border:1px solid var(--line-2,var(--line));border-radius:999px;padding:0 12px}
+.sim .res{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;font-family:var(--num);font-variant-numeric:tabular-nums}
+.sim .res .a{font-size:15px;color:var(--text-2)} .sim .res .b{font-size:26px;font-weight:600;letter-spacing:-.01em} .sim .res .arrow{color:var(--text-3)}
+.sim .res .d{font-size:13px}
+.sim .facts{font-size:12px;color:var(--text-3);margin:4px 0 10px}
+.sim svg{width:100%;height:150px;display:block}
+.sim .lg{display:flex;gap:14px;font-size:12px;color:var(--text-3);margin-top:6px}
+.sim .lg i{display:inline-block;width:14px;height:2px;vertical-align:middle;margin-right:5px}
+.sim .note{font-size:12px;color:var(--text-3);margin:10px 0 0;line-height:1.6}
 
 /* 개요 */
 .ov .lbl{font-size:13px;color:var(--text-2);display:flex;gap:8px;align-items:center}
@@ -324,6 +353,7 @@ label.btn{cursor:pointer}
 @media (max-width:1060px){
   .grid-top{grid-template-columns:1fr}
   .cols{grid-template-columns:1fr}
+  .sim{grid-template-columns:1fr}
   /* 지표를 거래소 앱처럼 2열 격자로: 라벨 위, 값 아래 */
   .kvl{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0}
   .kvl > div{flex-direction:column;align-items:flex-start;gap:2px;padding:12px 12px 12px 0;border-bottom:1px solid var(--line)}
@@ -375,6 +405,10 @@ label.btn{cursor:pointer}
   .kvl > div:nth-last-child(-n+2){border-bottom:0}
   .bal{grid-template-columns:1fr}
   .bal dl{grid-template-columns:1fr 1fr;gap:10px 16px;padding-top:10px;border-top:1px solid var(--line)}
+  .rk4{grid-template-columns:1fr 1fr}
+  .rk4 > div:nth-child(3){padding-left:0;border-left:0}
+  .rk4 > div:nth-child(n+3){border-top:1px solid var(--line)}
+  .rk4 dd{font-size:19px}
   .prow.h{display:none}
   .prow{grid-template-columns:1fr auto;grid-template-areas:"a b" "c b";row-gap:3px;padding:12px 2px}
   .prow > *{display:none}
@@ -556,7 +590,7 @@ var TJSeal=(()=>{var M1=Object.create;var kf=Object.defineProperty;var T1=Object
 const DEFAULT_REASONS = ["지표","스캐너","작도","기타"];
 const DEFAULT_TAGS = ["손절 미준수","근거 없는 진입","추격 진입","조기 익절","원칙 밖 추가매수","과한 레버리지·비중","보복 매매","혼조 구간 진입"];
 const CLOSE_TYPE = {"1":"부분청산","2":"전체청산","3":"강제청산","4":"부분 강제청산","5":"ADL","6":"ADL"};
-const APP_VERSION = "3.17";
+const APP_VERSION = "3.18";
 const EXCHANGES = {
   okx: { name:"OKX", url:"https://www.okx.com/account/my-api",
     fields:[["API Key","OKX_API_KEY"],["Secret Key","OKX_SECRET_KEY"],["Passphrase","OKX_PASSPHRASE"]],
@@ -1129,6 +1163,8 @@ function renderDash(){
     </section>
   </div>
 
+  ${riskPanel(s)}
+
   <section class="panel">
     <h3>진입 근거별 성과<span>줄을 누르면 그 근거로 들어간 매매만 모아 봐요</span></h3>
     ${reasonTable(s.t)}
@@ -1145,12 +1181,101 @@ function renderDash(){
     <section class="panel"><h3>가장 크게 벌고 잃은 매매</h3>${bestWorst(s)}</section>
   </div>
   ${new Set(s.t.map(exOf)).size>1 ? `<section class="panel"><h3>거래소</h3>${groupTable(s.t, exOf, null, k=>esc(EX_NAME[k]||k))}</section>` : ""}`;
+  bindRisk(s);
   drawEquity(s);
   if(innerWidth>1060){ const d=$(".kv").offsetHeight-$(".ov").offsetHeight; if(d>4) drawEquity(s, Math.min(460, 250+d)); }
   $$("#view [data-trade]").forEach(el=>el.addEventListener("click",()=>openDrawer(el.dataset.trade, s.t.slice().reverse())));
   $("#goUnrev").onclick = ()=>{ S.unreviewed = true; S.regret = false; S.tab = "list"; render(); };
   if($("#goRegret")) $("#goRegret").onclick = ()=>{ S.regret = true; S.unreviewed = false; S.tab = "list"; scrollTo({top:0}); render(); };
   $$("#view tr[data-reason]").forEach(tr=>tr.onclick=()=>{ S.reason = tr.dataset.reason; render(); scrollTo({top:0,behavior:"smooth"}); });
+}
+/* 손실 관리: 손실의 꼬리 + '이랬다면' 시뮬레이터 */
+const isLiq = x => x.type==="3" || x.type==="4" || (x.liqPenalty||0) < 0;
+const SIM_CAP = [0,25,50,100,200,500], SIM_LEV = [0,5,10,20], SIM_HOLD = [0,4,24,72];
+const simCfg = () => ({cap:100, lev:0, hold:0, ...(cfg.sim||{})});
+function riskPanel(s){
+  const L = s.t.filter(x=>x.realizedPnl<0).sort((a,b)=>a.realizedPnl-b.realizedPnl), W = s.t.filter(x=>x.realizedPnl>0);
+  if(!L.length) return `<section class="panel"><h3>손실 관리</h3><p class="dim" style="font-size:13px;margin:0">${periodName()}에는 손실로 끝난 매매가 없어요.</p></section>`;
+  const lossSum = L.reduce((a,x)=>a+x.realizedPnl,0), avgW = W.length ? W.reduce((a,x)=>a+x.realizedPnl,0)/W.length : null, avgL = lossSum/L.length;
+  const top = L.slice(0,5), topSum = top.reduce((a,x)=>a+x.realizedPnl,0), liq = L.filter(isLiq), liqSum = liq.reduce((a,x)=>a+x.realizedPnl,0);
+  const ratio = avgW ? Math.abs(avgL)/avgW : null, worst = L[0];
+  const pct = v => Math.round(v*100)+"%";
+  const strip = L.map((x,i)=>`<button class="${i<5?"top":""} ${isLiq(x)?"liq":""}" style="flex-grow:${Math.abs(x.realizedPnl).toFixed(2)}" data-trade="${esc(x.id)}" title="${esc(baseOf(x))} ${dirTxt(x.direction)} ${levTxt(x)}, ${fmtDT(x.uTime)}, ${fmtS(x.realizedPnl)}${isLiq(x)?", 강제청산":""}"></button>`).join("");
+  const c = simCfg(), chips = (id, opts, cur, lab) => `<div class="chipset" id="${id}">${opts.map(v=>`<button data-v="${v}" aria-pressed="${v===cur}">${lab(v)}</button>`).join("")}</div>`;
+  return `<section class="panel" id="riskPanel">
+    <h3>손실 관리<span>작은 수익 여러 번을 큰 손실 몇 번이 지우고 있지 않은지</span></h3>
+    <dl class="rk4">
+      <div><dt title="평균 손실 ÷ 평균 수익">손실 1번 = 수익</dt><dd>${ratio!=null?(ratio<10?ratio.toFixed(1):Math.round(ratio))+"번":"–"}</dd><small class="n">평균 ${avgW!=null?fmtS(avgW,1):"–"} / ${fmtS(avgL,1)}</small></div>
+      <div><dt>가장 큰 손실</dt><dd class="down"><button class="textbtn" data-trade="${esc(worst.id)}" style="font:inherit;color:inherit">${fmtS(worst.realizedPnl,0)}</button></dd><small>${avgW?`평균 수익의 ${Math.round(Math.abs(worst.realizedPnl)/avgW)}배, `:""}${esc(baseOf(worst))} ${levTxt(worst)}</small></div>
+      <div><dt>큰 손실 ${top.length}건의 비중</dt><dd>${pct(topSum/lossSum)}</dd><small class="n">${fmtS(topSum,0)} / 전체 손실 ${fmtS(lossSum,0)}</small></div>
+      <div><dt>강제청산</dt><dd class="${liq.length?"down":""}">${liq.length}건</dd><small class="n">${liq.length?`${fmtS(liqSum,0)}, 전체 손실의 ${pct(liqSum/lossSum)}`:"없어요"}</small></div>
+    </dl>
+    <div class="tail"><div class="cap"><span>손실 ${L.length}건을 큰 순서로, 폭은 손실 금액</span><span>진한 색은 큰 손실 5건, 빗금은 강제청산</span></div><div class="bar">${strip}</div></div>
+    <div class="sim">
+      <div class="ctl">
+        <div><h4>이랬다면</h4><p class="dim" style="font-size:12px;margin:0">같은 매매에 규칙 하나만 더했을 때</p></div>
+        <div><label>손실을 이 금액에서 끊었다면 (USDT)</label><div class="capr">${chips("simCap", SIM_CAP, SIM_CAP.includes(c.cap)?c.cap:-1, v=>v?"−"+v:"그대로")}<input type="number" id="simCapIn" min="1" step="1" placeholder="직접" value="${SIM_CAP.includes(c.cap)?"":c.cap}" aria-label="손실 상한 직접 입력"></div></div>
+        <div><label>이 배율을 넘는 매매를 안 했다면</label>${chips("simLev", SIM_LEV, c.lev, v=>v?v+"배":"그대로")}</div>
+        <div><label>이보다 오래 들고 간 매매를 빼면</label>${chips("simHold", SIM_HOLD, c.hold, v=>!v?"그대로":v<24?v+"시간":v===24?"하루":(v/24)+"일")}</div>
+      </div>
+      <div id="simOut"></div>
+    </div>
+  </section>`;
+}
+function simRun(t, c){
+  let kept = 0, capped = 0, saved = 0;
+  const ev = [];
+  for(const x of [...t].sort((a,b)=>a.uTime-b.uTime)){
+    const lev = x.lever||0, hold = (x.uTime-x.cTime)/3600000;
+    if(c.lev && lev > c.lev){ continue; }
+    if(c.hold && hold > c.hold){ continue; }
+    let v = x.realizedPnl;
+    if(c.cap && v < -c.cap){ saved += -c.cap - v; v = -c.cap; capped++; }
+    kept++; ev.push({x:x.uTime, v});
+  }
+  let cum=0, peak=0, mdd=0; const pts=[];
+  for(const e of ev){ cum+=e.v; peak=Math.max(peak,cum); mdd=Math.min(mdd,cum-peak); pts.push({x:e.x,y:cum}); }
+  const W = ev.filter(e=>e.v>0), L = ev.filter(e=>e.v<0), aw = W.length?W.reduce((a,e)=>a+e.v,0)/W.length:null, al = L.length?L.reduce((a,e)=>a+e.v,0)/L.length:null;
+  return {total:cum, mdd, pts, kept, dropped:t.length-kept, capped, saved, payoff: aw!=null&&al ? aw/Math.abs(al) : null};
+}
+function simSvg(a, b){
+  const all = [...a.pts, ...b.pts]; if(all.length<2) return "";
+  const x0 = Math.min(...all.map(p=>p.x)), x1 = Math.max(...all.map(p=>p.x)), y0 = Math.min(0,...all.map(p=>p.y)), y1 = Math.max(0,...all.map(p=>p.y));
+  const W=600, H=150, X = x => (x1>x0 ? (x-x0)/(x1-x0) : 0)*W, Y = y => H-4 - (y1>y0 ? (y-y0)/(y1-y0) : .5)*(H-8);
+  const line = pts => pts.length ? `M0 ${Y(0).toFixed(1)} `+pts.map(p=>`L${X(p.x).toFixed(1)} ${Y(p.y).toFixed(1)}`).join(" ") : "";
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+    <line x1="0" x2="${W}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--line)" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>
+    <path d="${line(a.pts)}" fill="none" stroke="var(--text-3)" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
+    <path d="${line(b.pts)}" fill="none" stroke="var(--ditto)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+}
+function renderSim(t){
+  const c = simCfg(), real = simRun(t, {cap:0,lev:0,hold:0}), sim = simRun(t, c), d = sim.total - real.total, none = !c.cap && !c.lev && !c.hold;
+  const facts = [];
+  if(c.cap) facts.push(`손실을 줄인 매매 ${sim.capped}건`);
+  if(c.lev || c.hold) facts.push(`뺀 매매 ${sim.dropped}건`);
+  facts.push(`최대 낙폭 ${fmtS(real.mdd,0)} → ${fmtS(sim.mdd,0)}`);
+  if(real.payoff!=null && sim.payoff!=null) facts.push(`손익비 ${real.payoff.toFixed(2)} → ${sim.payoff.toFixed(2)}`);
+  $("#simOut").innerHTML = `
+    <div class="res"><span class="a n ${tone(real.total)}">실제 ${fmtS(real.total,0)}</span>${none?"":`<span class="arrow">→</span><span class="b ${tone(sim.total)}">${fmtS(sim.total,0)}</span><span class="d ${tone(d)}">${fmtS(d,0)} USDT</span>`}</div>
+    <div class="facts n">${none?"왼쪽에서 규칙을 하나 골라 보세요.":facts.join(", ")}</div>
+    ${simSvg(real, sim)}
+    <div class="lg"><span><i style="background:var(--text-3)"></i>실제</span>${none?"":`<span><i style="background:var(--ditto)"></i>이랬다면</span>`}</div>
+    <p class="note">손실 상한은 손절이 그 금액에서 정확히 체결됐다고 가정해요. 수익으로 끝난 매매 중에도 중간에 그만큼 밀렸던 게 있다면 손절에 먼저 걸렸을 테니, 실제 효과는 이보다 작아요. 매매를 뺀 시나리오는 그 매매에 쓴 돈이 그냥 쉬었다고 봐요.</p>`;
+}
+function bindRisk(s){
+  if(!$("#simOut")) return;
+  const set = patch => { cfg = {...cfg, sim:{...simCfg(), ...patch}}; saveCfg(cfg);
+    const c = simCfg();
+    $$("#simCap button").forEach(b=>b.setAttribute("aria-pressed", +b.dataset.v===c.cap));
+    $$("#simLev button").forEach(b=>b.setAttribute("aria-pressed", +b.dataset.v===c.lev));
+    $$("#simHold button").forEach(b=>b.setAttribute("aria-pressed", +b.dataset.v===c.hold));
+    if(SIM_CAP.includes(c.cap)) $("#simCapIn").value = "";
+    renderSim(s.t); };
+  $("#simCap").onclick = e=>{ const b=e.target.closest("button"); if(b) set({cap:+b.dataset.v}); };
+  $("#simLev").onclick = e=>{ const b=e.target.closest("button"); if(b) set({lev:+b.dataset.v}); };
+  $("#simHold").onclick = e=>{ const b=e.target.closest("button"); if(b) set({hold:+b.dataset.v}); };
+  $("#simCapIn").onchange = e=>{ const v=Math.round(+e.target.value); if(v>0) set({cap:v}); };
+  renderSim(s.t);
 }
 function groupTable(t, keyFn, order, label){
   const g = groupBy(t, keyFn); const keys = order || [...g.keys()];
