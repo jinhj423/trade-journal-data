@@ -91,7 +91,7 @@
  },
  "__settings": {
   "view": {
-   "period": "custom",
+   "period": "today",
    "from": "2026-10-27",
    "to": "2026-10-28"
   }
