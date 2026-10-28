@@ -246,13 +246,6 @@ button.row:hover{background:var(--hover)}
 .regret-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .regret-row .chip{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;font-size:14px}
 .regret-row .chip svg{width:13px;height:13px}
-.stop-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.stop-row .chip{padding:8px 16px;font-size:14px;font-family:var(--num)}
-.stop-row input{width:84px;height:36px;font:inherit;font-size:14px;background:var(--bg);color:var(--text);border:1px solid var(--line-2);border-radius:999px;padding:0 12px}
-.stop-row input:focus{outline:none;border-color:var(--ditto)}
-.stopres{font-size:13px;color:var(--text-2);margin-top:8px;line-height:1.6}
-.stopres b{font-weight:600}
-.flag.ov{color:var(--down);background:var(--down-wash)}
 .chips.big .chip{padding:8px 16px;font-size:14px}
 .rv{color:var(--text-3)} .rv.done{color:var(--ditto)}
 .more{padding:16px 0 4px;text-align:center}
@@ -465,9 +458,6 @@ label.btn{cursor:pointer}
     <div class="chips big" id="dReasons"></div>
     <div class="d-sec">진입 평가</div>
     <div class="regret-row"><button class="chip" id="dRegret" aria-pressed="false"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 13V2h7.5l-1.5 2.75L10.5 7.5H3"/></svg>아쉬운 진입</button><span class="dim" id="dRegretHint" style="font-size:12px">체크하면 기록에서 따로 모아볼 수 있어요</span></div>
-    <div class="d-sec">계획 손절 <span class="dim" style="font-weight:400;font-size:12px">수익률(증거금 대비) 기준</span></div>
-    <div class="stop-row"><div class="chips" id="dStop"><button class="chip" data-v="5">−5%</button><button class="chip" data-v="10">−10%</button><button class="chip" data-v="15">−15%</button></div><input type="number" id="dStopIn" min="0.1" step="0.1" placeholder="직접 %" aria-label="계획 손절 직접 입력 (%)"></div>
-    <div class="stopres" id="dStopRes"></div>
     <div class="d-sec">이 매매에서 한 실수</div>
     <div class="chips" id="dChips"></div>
     <div class="d-sec">복기</div>
@@ -565,7 +555,7 @@ var TJSeal=(()=>{var M1=Object.create;var kf=Object.defineProperty;var T1=Object
 const DEFAULT_REASONS = ["지표","스캐너","작도","기타"];
 const DEFAULT_TAGS = ["손절 미준수","근거 없는 진입","추격 진입","조기 익절","원칙 밖 추가매수","과한 레버리지·비중","보복 매매","혼조 구간 진입"];
 const CLOSE_TYPE = {"1":"부분청산","2":"전체청산","3":"강제청산","4":"부분 강제청산","5":"ADL","6":"ADL"};
-const APP_VERSION = "3.21";
+const APP_VERSION = "3.22";
 const EXCHANGES = {
   okx: { name:"OKX", url:"https://www.okx.com/account/my-api",
     fields:[["API Key","OKX_API_KEY"],["Secret Key","OKX_SECRET_KEY"],["Passphrase","OKX_PASSPHRASE"]],
@@ -1101,7 +1091,6 @@ function renderDash(){
   const reviewed = s.t.filter(t=>S.notes[t.id] && S.notes[t.id].reviewed).length;
   const rg = s.t.filter(isRegret), rgSum = rg.reduce((a,x)=>a+x.realizedPnl,0);
   if(!s.n){ $("#view").innerHTML = balPanel() + posPanel() + `<div class="empty">${periodName()}에 청산한 매매가 없어요.${open?` 부분청산 후 보유 중인 포지션이 ${open}개 있어요.`:""}</div>`; return; }
-  const sp = s.t.reduce((a,x)=>{ const e=stopEval(x, stopOf(x)); if(e&&e.closed){ a.n++; if(e.over){ a.over++; a.excess+=e.excess; } } return a; }, {n:0, over:0, excess:0});
   const lossX = (s.avgWin && s.avgLoss) ? Math.abs(s.avgLoss)/s.avgWin : null;
   const pf = s.pf===Infinity ? "∞" : s.pf!=null ? s.pf.toFixed(2) : "–";
   const gross = s.total - s.fees;
@@ -1131,7 +1120,6 @@ function renderDash(){
         <div><dt title="평균 손실 ÷ 평균 수익. 손실 한 번을 메우려면 평균 수익이 몇 번 필요한지">손실 1번 = 수익</dt><dd class="${lossX!=null&&lossX>=3?"down":""}">${lossX!=null?(lossX<10?lossX.toFixed(1):Math.round(lossX))+"번":"–"}<small>${lossX!=null?`승률 ${(100*lossX/(1+lossX)).toFixed(0)}% 넘어야 본전`:""}</small></dd></div>
         <div><dt title="한 건당 평균 실현손익. 0보다 커야 길게 봐서 남아요">건당 기대값</dt><dd class="${tone(s.exp)}">${fmtS(s.exp)}<small>증거금 대비 ${fmtPct(s.expR)}</small></dd></div>
         <div><dt title="총수익 ÷ 총손실. 1.5 이상이면 양호">Profit Factor</dt><dd>${pf}<small>번 돈 ${fmtN(s.gw,0)}, 잃은 돈 ${fmtN(Math.abs(s.gl),0)}</small></dd></div>
-        <div><dt title="복기에서 계획 손절을 적은 매매 중, 실제 손실이 그 안에서 끝난 매매">계획 손절</dt><dd>${sp.n?`${sp.n-sp.over} / ${sp.n}건 지킴`:"–"}<small class="n">${sp.n?(sp.over?`초과 손실 <span class="down">${fmtS(sp.excess,1)}</span>`:"모두 계획 안에서"):"복기에서 적으면 모여요"}</small></dd></div>
         <div><dt title="강제청산(부분 포함)으로 끝난 매매">강제청산</dt><dd class="${s.liqT?"down":""}">${s.liqT}건<small class="n">${s.liqT?`${fmtS(s.liqLoss,0)}${s.gl?`, 전체 손실의 ${Math.round(s.liqLoss/s.gl*100)}%`:""}`:""}</small></dd></div>
         <div><dt>최장 연속</dt><dd>${s.maxW}연승 ${s.maxL}연패${s.cur ? `<small>${s.cur}</small>` : ""}</dd></div>
         <div><dt>평균 보유</dt><dd>${fmtDur(s.hold)}</dd></div>
@@ -1369,7 +1357,7 @@ function rowHtml(x, multi){
   const flag = x.status!=="closed" ? `<span class="flag">${esc(CLOSE_TYPE[x.type]||"보유 중")}</span>` : (x.type==="3"||x.type==="6") ? `<span class="flag hot">${CLOSE_TYPE[x.type]}</span>` : "";
   return `<button class="row" data-trade="${esc(x.id)}">
     <span class="when">${fmtDT(x.uTime)}</span>
-    <span class="sym"><b>${esc(baseOf(x))}</b><span class="m-side side ${x.direction}" hidden>${dirTxt(x.direction)} ${levTxt(x)}</span>${flag}${isRegret(x)?`<span class="flag rg">아쉬움</span>`:""}${(()=>{ const e=stopEval(x, stopOf(x)); return e&&e.over?`<span class="flag ov" title="계획 손절 −${e.stop}%, 실제 ${fmtPct(x.pnlRatio)}">손절 초과</span>`:""; })()}${reasonsOf(x.id).map(r=>`<span class="flag rs">${esc(r)}</span>`).join("")}${multi?`<small>${esc(EX_NAME[exOf(x)]||exOf(x))}</small>`:""}</span>
+    <span class="sym"><b>${esc(baseOf(x))}</b><span class="m-side side ${x.direction}" hidden>${dirTxt(x.direction)} ${levTxt(x)}</span>${flag}${isRegret(x)?`<span class="flag rg">아쉬움</span>`:""}${reasonsOf(x.id).map(r=>`<span class="flag rs">${esc(r)}</span>`).join("")}${multi?`<small>${esc(EX_NAME[exOf(x)]||exOf(x))}</small>`:""}</span>
     <span class="side ${x.direction}">${dirTxt(x.direction)} ${levTxt(x)}</span>
     <span class="r">${fmtPx(x.openAvgPx)}</span>
     <span class="r">${fmtPx(x.closeAvgPx)}</span>
@@ -1413,10 +1401,6 @@ function openDrawer(id, list){
   const shown = VIEW ? all.filter(t=>mis.has(t)) : all;
   $("#dChips").innerHTML = shown.length ? shown.map(t=>`<button class="chip" aria-pressed="${mis.has(t)}" data-tag="${esc(t)}" ${VIEW?"disabled":""}>${esc(t)}</button>`).join("") : `<span class="dim" style="font-size:13px">체크한 실수 없음</span>`;
   if(!VIEW) $$("#dChips .chip").forEach(c=>c.onclick=()=>{ c.setAttribute("aria-pressed", c.getAttribute("aria-pressed")!=="true"); markDirty(700); });
-  { const st = +n.stop>0 ? +n.stop : null, preset = [5,10,15].includes(st);
-    $$("#dStop .chip").forEach(c=>{ c.setAttribute("aria-pressed", preset && +c.dataset.v===st); c.disabled = !!VIEW; c.hidden = !!VIEW && !(preset && +c.dataset.v===st); });
-    $("#dStopIn").value = st && !preset ? st : ""; $("#dStopIn").readOnly = !!VIEW; $("#dStopIn").hidden = !!VIEW && !(st && !preset);
-    renderStopRes(x); }
   $("#dRegret").setAttribute("aria-pressed", !!n.regret); $("#dRegret").disabled = !!VIEW;
   $("#dRegret").hidden = !!VIEW && !n.regret; $("#dRegretHint").hidden = !!VIEW;
   $("#dMemo").value = n.memo||""; $("#dDone").checked = !!n.reviewed;
@@ -1431,35 +1415,10 @@ function openDrawer(id, list){
 // 자동 저장: 칩은 누르고 잠시 뒤, 메모는 입력을 멈추고 2.5초 뒤 저장. 닫거나 다른 매매로 넘어갈 때도 저장
 let saveT=null, saveChain=Promise.resolve();
 function markDirty(delay=2500){ dirty=true; $("#dState").textContent="저장 대기"; clearTimeout(saveT); saveT=setTimeout(()=>saveNote(true), delay); }
-/* 계획 손절: 증거금 대비 −N%. 실제 수익률이 그보다 나쁘면 '손절 초과' */
-const stopOf = x => { const v = S.notes[x.id] && +S.notes[x.id].stop; return v>0 ? v : null; };
-function stopEval(x, stop){
-  if(!(stop>0)) return null;
-  const lev = x.lever||null, sg = x.direction==="short"?-1:1;
-  const pxMove = lev ? stop/lev : null, stopPx = (lev && x.openAvgPx) ? x.openAvgPx*(1 - sg*stop/100/lev) : null;
-  const closed = x.status==="closed" && x.pnlRatio!=null;
-  const over = closed && x.pnlRatio < -stop/100 - 1e-9;
-  const excess = over && x.margin ? (x.pnlRatio + stop/100)*x.margin : 0;   // 계획보다 더 잃은 금액 (음수)
-  return {stop, pxMove, stopPx, closed, over, excess};
-}
-function renderStopRes(x){
-  const box = $("#dStopRes"), v = curStop(), e = stopEval(x, v);
-  if(!e){ box.innerHTML = VIEW ? "" : `<span class="dim">진입할 때 생각한 손절 폭을 고르면, 결과와 비교해 지켰는지 보여줘요</span>`; return; }
-  const px = e.stopPx!=null ? `손절가 ≈ ${fmtPx(e.stopPx)}${e.pxMove!=null?` (가격 ${x.direction==="short"?"+":"−"}${fmtN(e.pxMove,2)}%)`:""}` : "";
-  const res = !e.closed ? "" : e.over
-    ? `<br><b class="down">계획보다 더 잃었어요</b>: 실제 ${fmtPct(x.pnlRatio)}${e.excess?`, 초과 손실 ${fmtS(e.excess)} USDT`:""}`
-    : `<br><b style="color:var(--ditto)">계획 안에서 끝났어요</b>: 실제 ${fmtPct(x.pnlRatio)}`;
-  box.innerHTML = px + res;
-}
-function curStop(){
-  const b = $$("#dStop .chip").find(c=>c.getAttribute("aria-pressed")==="true");
-  if(b) return +b.dataset.v;
-  const v = +$("#dStopIn").value; return v>0 ? v : null;
-}
 // 진입 근거나 아쉬운 진입을 누르면 '복기 끝'을 자동으로 체크. 자동으로 켠 경우만, 진입 관련을 다 풀면 다시 끔
 let autoDone = false;
 function syncDone(){
-  const any = $$("#dReasons .chip").some(c=>c.getAttribute("aria-pressed")==="true") || $("#dRegret").getAttribute("aria-pressed")==="true" || curStop()!=null;
+  const any = $$("#dReasons .chip").some(c=>c.getAttribute("aria-pressed")==="true") || $("#dRegret").getAttribute("aria-pressed")==="true";
   const d = $("#dDone");
   if(any && !d.checked){ d.checked = true; autoDone = true; }
   else if(!any && autoDone){ d.checked = false; autoDone = false; }
@@ -1477,8 +1436,7 @@ function saveNote(auto=false){
   const pick = sel => $$(sel).filter(c=>c.getAttribute("aria-pressed")==="true").map(c=>c.dataset.tag);
   const note = { memo:$("#dMemo").value.trim(), reasons:pick("#dReasons .chip"), mistakes:pick("#dChips .chip"), reviewed:$("#dDone").checked, updated:Date.now() };
   if($("#dRegret").getAttribute("aria-pressed")==="true") note.regret = true;
-  { const st = curStop(); if(st) note.stop = Math.round(st*10)/10; }
-  const empty = !note.memo && !note.mistakes.length && !note.reasons.length && !note.reviewed && !note.regret && !note.stop;
+  const empty = !note.memo && !note.mistakes.length && !note.reasons.length && !note.reviewed && !note.regret;
   dirty=false;
   const here = () => S.drawerId===id;
   if(here()) $("#dState").textContent="저장 중";
@@ -1815,11 +1773,6 @@ $("#btnSync").onclick=triggerSync; $("#btnSettings").onclick=()=>openSettings();
 $("#veil").onclick=closeDrawer; $("#dClose").onclick=closeDrawer; $("#dSave").onclick=saveNote;
 $("#dPrev").onclick=()=>step(-1); $("#dNext").onclick=()=>step(1);
 $("#dMemo").addEventListener("input",()=>markDirty(2500));
-$("#dStop").addEventListener("click",e=>{ const b=e.target.closest(".chip"); if(!b || VIEW) return; const on = b.getAttribute("aria-pressed")!=="true";
-  $$("#dStop .chip").forEach(c=>c.setAttribute("aria-pressed", c===b && on)); if(on) $("#dStopIn").value="";
-  const x = S.trades.find(t=>t.id===S.drawerId); if(x) renderStopRes(x); syncDone(); markDirty(700); });
-$("#dStopIn").addEventListener("input",()=>{ if(VIEW) return; $$("#dStop .chip").forEach(c=>c.setAttribute("aria-pressed", false));
-  const x = S.trades.find(t=>t.id===S.drawerId); if(x) renderStopRes(x); syncDone(); markDirty(1500); });
 $("#dRegret").addEventListener("click",()=>{ if(VIEW) return; const b=$("#dRegret"); b.setAttribute("aria-pressed", b.getAttribute("aria-pressed")!=="true"); syncDone(); markDirty(700); }); $("#dDone").addEventListener("change",()=>{ autoDone = false; markDirty(700); });
 $$("#settings [data-close]").forEach(b=>b.onclick=closeSettings);
 $$(".stabs button").forEach(b=>b.onclick=()=>setPane(b.dataset.p));
