@@ -168,6 +168,7 @@ button.prow:hover{background:var(--hover)}
 
 /* 표 */
 table.t{width:100%;border-collapse:collapse;font-size:13px}
+table.t tr.sum td{border-top:1px solid var(--line-2)}
 table.t th{font-weight:400;color:var(--text-3);font-size:12px;text-align:right;padding:0 6px 8px;border-bottom:1px solid var(--line)}
 table.t td{padding:10px 6px;text-align:right;border-bottom:1px solid var(--line);font-family:var(--num);font-variant-numeric:tabular-nums}
 table.t td:first-child{font-family:var(--body)}
@@ -555,7 +556,7 @@ var TJSeal=(()=>{var M1=Object.create;var kf=Object.defineProperty;var T1=Object
 const DEFAULT_REASONS = ["지표","스캐너","작도","기타"];
 const DEFAULT_TAGS = ["손절 미준수","근거 없는 진입","추격 진입","조기 익절","원칙 밖 추가매수","과한 레버리지·비중","보복 매매","혼조 구간 진입"];
 const CLOSE_TYPE = {"1":"부분청산","2":"전체청산","3":"강제청산","4":"부분 강제청산","5":"ADL","6":"ADL"};
-const APP_VERSION = "3.22";
+const APP_VERSION = "3.23";
 const EXCHANGES = {
   okx: { name:"OKX", url:"https://www.okx.com/account/my-api",
     fields:[["API Key","OKX_API_KEY"],["Secret Key","OKX_SECRET_KEY"],["Passphrase","OKX_PASSPHRASE"]],
@@ -1138,7 +1139,7 @@ function renderDash(){
   </section>
 
   <section class="panel">
-    <h3>실수별 손익<span>복기에서 체크한 실수가 실제로 얼마를 잃게 했는지</span></h3>
+    <h3>실수별 손익<span>복기에서 체크한 실수가 실제로 얼마를 잃게 했는지. 실수가 여러 개인 매매는 각 줄에 모두 들어가요</span></h3>
     ${mistakeTable(s.t)}
   </section>
 
@@ -1197,10 +1198,12 @@ function mistakeTable(t){
   if(!rows.length && !clean.length) return `<div class="empty">아직 복기한 매매가 없어요. 기록 탭에서 매매를 열어 실수를 체크하면 여기에 실수별 손익이 쌓여요.</div>`;
   rows.sort((a,b)=>a.pnl-b.pnl);
   const cs = rowStats(clean);
-  const max = Math.max(...rows.map(r=>Math.abs(r.pnl)), Math.abs(cs.pnl));
+  // 실수가 하나라도 있는 매매 (한 건은 한 번만)
+  const withMis = t.filter(x=>S.notes[x.id] && (S.notes[x.id].mistakes||[]).length), ms = rowStats(withMis);
+  const max = Math.max(...rows.map(r=>Math.abs(r.pnl)), Math.abs(cs.pnl), Math.abs(ms.pnl));
   const tr = (label, r) => `<tr><td>${label}</td><td>${r.n}</td><td>${wr(r.wr)}</td><td class="${tone(r.pnl/r.n)}">${fmtS(r.pnl/r.n,1)}</td><td class="bar-c opt">${dbar(r.pnl,max)}</td><td class="${tone(r.pnl)}">${fmtS(r.pnl,1)}</td></tr>`;
   return `<table class="t"><thead><tr><th></th><th>건수</th><th>승률</th><th>건당</th><th class="bar-c opt"></th><th>합계</th></tr></thead><tbody>${
-    rows.map(r=>tr(esc(r.tag), r)).join("")}${clean.length? tr(`<span style="color:var(--ditto)">실수 없이 원칙대로</span>`, cs) : ""}</tbody></table>`;
+    rows.map(r=>tr(esc(r.tag), r)).join("")}${withMis.length ? tr(`<b>실수 있는 매매 전체</b>`, ms).replace("<tr>",'<tr class="sum">') : ""}${clean.length? tr(`<span style="color:var(--ditto)">실수 없이 원칙대로</span>`, cs) : ""}</tbody></table>`;
 }
 
 /* 누적손익 · 낙폭 */
