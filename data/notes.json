@@ -461,11 +461,13 @@
  },
  "4046452411228672002_1793794720028": {
   "memo": "",
-  "reasons": [],
+  "reasons": [
+   "지표"
+  ],
   "mistakes": [
    "조기 익절"
   ],
-  "reviewed": false,
-  "updated": 1793803936680
+  "reviewed": true,
+  "updated": 1793803937427
  }
 }
