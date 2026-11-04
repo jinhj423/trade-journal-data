@@ -570,7 +570,7 @@ var TJSeal=(()=>{var M1=Object.create;var kf=Object.defineProperty;var T1=Object
 const DEFAULT_REASONS = ["지표","스캐너","작도","기타"];
 const DEFAULT_TAGS = ["손절 미준수","근거 없는 진입","추격 진입","조기 익절","원칙 밖 추가매수","과한 레버리지·비중","보복 매매","혼조 구간 진입"];
 const CLOSE_TYPE = {"1":"부분청산","2":"전체청산","3":"강제청산","4":"부분 강제청산","5":"ADL","6":"ADL"};
-const APP_VERSION = "3.28";
+const APP_VERSION = "3.29";
 const EXCHANGES = {
   okx: { name:"OKX", url:"https://www.okx.com/account/my-api",
     fields:[["API Key","OKX_API_KEY"],["Secret Key","OKX_SECRET_KEY"],["Passphrase","OKX_PASSPHRASE"]],
@@ -707,7 +707,7 @@ function posPanel(){
       <span class="sub n">${fmtPx(x.avgPx)} → ${fmtPx(x.mark)}, ${x.margin!=null?`마진 ${fmtN(x.margin,0)} / `:""}${x.notional!=null?"규모 "+fmtN(x.notional,0)+" USDT":""}, ${fmtDur(Date.now()-x.cTime)}${x.liqPx?`, 청산가 ${fmtPx(x.liqPx)}`:""}</span>
     </${tag.split(" ")[0]}>`;
   };
-  return `<section class="panel pos" id="posPanel"><h3>보유 중 포지션 <span>${op.length}개${(()=>{ const u = marginUse(); return u&&u.n ? `, 마진 ${fmtN(u.m,0)} USDT = 잔고의 <b class="${useTone(u.pct)}" style="font-weight:600">${(u.pct*100).toFixed(1)}%</b>` : ""; })()}</span><b class="tot ${tone(tot)}">${fmtS(tot)}<small class="dim" style="font-size:12px;font-weight:400"> 미실현</small></b></h3>
+  return `<section class="panel pos" id="posPanel"><h3>보유 중 포지션 <span>${op.length}개${(()=>{ const u = marginUse(); return u&&u.n ? `, 마진 ${fmtN(u.m,0)} USDT = 계좌의 <b class="${useTone(u.pct)}" style="font-weight:600">${(u.pct*100).toFixed(1)}%</b>` : ""; })()}</span><b class="tot ${tone(tot)}">${fmtS(tot)}<small class="dim" style="font-size:12px;font-weight:400"> 미실현</small></b></h3>
     <div class="prow h"><span>종목</span><span class="r">마진</span><span class="r">규모</span><span class="r">진입가</span><span class="r">현재가</span><span class="r">청산가</span><span class="r">펀딩비</span><span class="r">보유</span><span class="r">미실현 손익</span></div>
     ${op.map(row).join("")}
     <p class="when">${when}</p></section>`;
@@ -718,10 +718,10 @@ function marginUse(){
   const exs = Object.keys(b).filter(k=>k!=="ts" && S.connected.has(k) && (S.ex==="all"||S.ex===k));
   if(!exs.length) return null;
   const op = (S.open||[]).filter(x=>exs.includes(x.exchange));
-  let eq = exs.reduce((a,k)=>a+(b[k].equity||0),0);
-  if(S.marksTs && op.length) eq += op.reduce((a,x)=>a+((livePos(x).upl||0)-(x.upl||0)),0);
+  // 기준: 미실현 손익을 뺀 원래 계좌 (잔고 − 미실현). 시세가 움직여도 기준은 그대로
+  const base = exs.reduce((a,k)=>a+(b[k].equity||0)-(b[k].upl||0),0);
   const m = op.reduce((a,x)=>a+(x.margin||0),0);
-  return eq>0 ? {eq, m, pct:m/eq, n:op.length} : null;
+  return base>0 ? {base, m, pct:m/base, n:op.length} : null;
 }
 const useTone = p => "mid";   // 비중은 손익이 아니라 색(빨강·파랑)을 쓰지 않음
 // 계좌 잔고: 수집 때 값. 현재가를 받아오면 보유 포지션의 손익 변화만큼 실시간으로 보정
@@ -746,7 +746,7 @@ function balPanel(){
     <dl>
       ${item("사용 가능", has("avail")?fmtN(sum("avail")):"–")}
       ${(()=>{ const u = marginUse(); return u && u.n
-        ? `<div title="보유 포지션 마진 합계 ÷ 계좌 잔고"><dt>잡은 마진</dt><dd>${fmtN(u.m)} <span class="${useTone(u.pct)}" style="font-size:13px">${(u.pct*100).toFixed(1)}%</span></dd><div class="mbar"><i style="width:${Math.min(100,u.pct*100).toFixed(1)}%"></i></div></div>`
+        ? `<div title="보유 포지션 마진 합계 ÷ 미실현 손익을 뺀 계좌 (${fmtN(u.base)} USDT)"><dt>잡은 마진</dt><dd>${fmtN(u.m)} <span class="${useTone(u.pct)}" style="font-size:13px">${(u.pct*100).toFixed(1)}%</span></dd><div class="mbar"><i style="width:${Math.min(100,u.pct*100).toFixed(1)}%"></i></div></div>`
         : item("잡은 마진", "0 <span class=\"dim\" style=\"font-size:13px\">0%</span>"); })()}
       ${item("미실현 손익", fmtS(upl), tone(upl))}
       ${fund>0.01?item("자금·적립 계좌", fmtN(fund)):""}
