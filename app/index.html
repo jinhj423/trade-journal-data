@@ -568,7 +568,7 @@ var TJSeal=(()=>{var M1=Object.create;var kf=Object.defineProperty;var T1=Object
 const DEFAULT_REASONS = ["지표","스캐너","작도","기타"];
 const DEFAULT_TAGS = ["손절 미준수","근거 없는 진입","추격 진입","조기 익절","원칙 밖 추가매수","과한 레버리지·비중","보복 매매","혼조 구간 진입"];
 const CLOSE_TYPE = {"1":"부분청산","2":"전체청산","3":"강제청산","4":"부분 강제청산","5":"ADL","6":"ADL"};
-const APP_VERSION = "3.24";
+const APP_VERSION = "3.25";
 const EXCHANGES = {
   okx: { name:"OKX", url:"https://www.okx.com/account/my-api",
     fields:[["API Key","OKX_API_KEY"],["Secret Key","OKX_SECRET_KEY"],["Passphrase","OKX_PASSPHRASE"]],
@@ -725,7 +725,7 @@ function balPanel(){
   return `<section class="panel bal" id="balPanel">
     <div><div class="lbl">계좌 잔고 <span class="dim" style="font-size:12px">${exs.length>1?exs.map(k=>EX_NAME[k]||k).join(" + ")+", ":""}선물 계좌</span></div>
       <div class="big">${fmtN(eq)}<small>USDT</small></div>${kr(eq) ? `<span class="krw" title="${esc(fxTitle())}">${krw(eq,false)}</span>` : ""}
-      ${chg!=null?`<div class="chg" title="오늘 첫 수집(0시 무렵) 잔고 대비. 입출금도 포함돼요">오늘 <span class="${tone(chg)}">${fmtS(chg)} (${fmtPct(chg/start,2)})</span>${(()=>{ const t0=dayStart(kstDay(Date.now())), w=wdSum(wdIn(t0, Infinity).filter(x=>exs.includes(x.exchange))); return w?`<span class="dim">, 출금 ${fmtN(w,0)} 빼면 </span><span class="${tone(chg+w)}">${fmtS(chg+w)}</span>`:""; })()}</div>`:""}</div>
+      ${chg!=null?`<div class="chg" title="오늘 첫 수집(0시 무렵) 잔고 대비. 입출금도 포함돼요">오늘 <span class="${tone(chg)}">${fmtS(chg)} (${fmtPct(chg/start,2)})</span>${(()=>{ const t0=dayStart(kstDay(Date.now())), w=wdSum(wdIn(t0, Infinity).filter(x=>exs.includes(x.exchange))); return w?`</div><div class="chg"><span class="dim">출금 ${fmtN(w,0)} 빼면 </span><span class="${tone(chg+w)}">${fmtS(chg+w)}</span>`:""; })()}</div>`:""}</div>
     <dl>
       ${item("사용 가능", has("avail")?fmtN(sum("avail")):"–")}
       ${item("증거금 사용", has("margin")?fmtN(sum("margin")):op.length?fmtN(op.reduce((a,x)=>a+(x.margin||0),0)):"–")}
@@ -1120,7 +1120,7 @@ function renderDash(){
   if(s.ret!=null) subParts.push(`<span class="${tone(s.ret)}">${fmtPct(s.ret,2)}</span> 자산 대비`);
   if(s.rebate) subParts.push(rebOn() ? `페이백 ${fmtS(s.rebate)}${s.rebEst?"(추정)":""} 포함` : `페이백 ${fmtS(s.rebate)}${s.rebEst?"(추정)":""} 별도`);
   subParts.push(`${s.n}건 청산`);
-  { const w = wdIn(periodStart(), periodEnd()), ws = wdSum(w); if(ws) subParts.push(`출금 ${fmtN(ws,0)} USDT <button class="textbtn" id="goWd">보기</button>`); }
+  const wdLine = (()=>{ const ws = wdSum(wdIn(periodStart(), periodEnd())); return ws ? `<div class="sub">출금 ${fmtN(ws,0)} USDT <button class="textbtn" id="goWd">보기</button></div>` : ""; })();
   if(open) subParts.push(`${open}건 보유 중`);
   $("#view").innerHTML = balPanel() + posPanel() + `
   <div class="grid-top">
@@ -1128,7 +1128,7 @@ function renderDash(){
       <div class="lbl">실현손익 <i>${periodName()}, 수수료·펀딩비${rebOn()?"·페이백":""} 포함</i></div>
       <div class="big ${tone(s.net)}">${fmtS(s.net)}<small>USDT</small></div>
       ${kr(s.net)}
-      <div class="sub">${subParts.join(", ")}</div>
+      <div class="sub">${subParts.join(", ")}</div>${wdLine}
       <div class="chart" id="eq"></div>
       <div class="dd-cap"><span>고점 대비 낙폭</span><span class="n">최대 ${fmtS(s.mdd)}${s.mddPct!=null?` (${fmtPct(s.mddPct)})`:""}</span></div>
       <div class="chart" id="dd"></div>
