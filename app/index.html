@@ -568,7 +568,7 @@ var TJSeal=(()=>{var M1=Object.create;var kf=Object.defineProperty;var T1=Object
 const DEFAULT_REASONS = ["지표","스캐너","작도","기타"];
 const DEFAULT_TAGS = ["손절 미준수","근거 없는 진입","추격 진입","조기 익절","원칙 밖 추가매수","과한 레버리지·비중","보복 매매","혼조 구간 진입"];
 const CLOSE_TYPE = {"1":"부분청산","2":"전체청산","3":"강제청산","4":"부분 강제청산","5":"ADL","6":"ADL"};
-const APP_VERSION = "3.25";
+const APP_VERSION = "3.26";
 const EXCHANGES = {
   okx: { name:"OKX", url:"https://www.okx.com/account/my-api",
     fields:[["API Key","OKX_API_KEY"],["Secret Key","OKX_SECRET_KEY"],["Passphrase","OKX_PASSPHRASE"]],
@@ -719,13 +719,15 @@ function balPanel(){
   const op = (S.open||[]).filter(x=>exs.includes(x.exchange));
   const live = !!(S.marksTs && op.length);
   if(live){ const d = op.reduce((a,x)=>a+((livePos(x).upl||0)-(x.upl||0)),0); eq += d; upl += d; }
-  const start = equityOn(kstDay(Date.now())), chg = start ? eq - start : null;
+  // 오늘 증감: 출금한 돈은 손실이 아니므로 다시 더해서 봄
+  const t0 = dayStart(kstDay(Date.now())), wdToday = wdSum(wdIn(t0, Infinity).filter(x=>exs.includes(x.exchange)));
+  const start = equityOn(kstDay(Date.now())), chg = start ? eq - start + wdToday : null;
   const fund = has("funding") ? sum("funding") + sum("earn") : 0;
   const item = (k, v, cls="") => `<div><dt>${k}</dt><dd class="${cls}">${v}</dd></div>`;
   return `<section class="panel bal" id="balPanel">
     <div><div class="lbl">계좌 잔고 <span class="dim" style="font-size:12px">${exs.length>1?exs.map(k=>EX_NAME[k]||k).join(" + ")+", ":""}선물 계좌</span></div>
       <div class="big">${fmtN(eq)}<small>USDT</small></div>${kr(eq) ? `<span class="krw" title="${esc(fxTitle())}">${krw(eq,false)}</span>` : ""}
-      ${chg!=null?`<div class="chg" title="오늘 첫 수집(0시 무렵) 잔고 대비. 입출금도 포함돼요">오늘 <span class="${tone(chg)}">${fmtS(chg)} (${fmtPct(chg/start,2)})</span>${(()=>{ const t0=dayStart(kstDay(Date.now())), w=wdSum(wdIn(t0, Infinity).filter(x=>exs.includes(x.exchange))); return w?`</div><div class="chg"><span class="dim">출금 ${fmtN(w,0)} 빼면 </span><span class="${tone(chg+w)}">${fmtS(chg+w)}</span>`:""; })()}</div>`:""}</div>
+      ${chg!=null?`<div class="chg" title="오늘 첫 수집(0시 무렵) 잔고 대비. 출금한 금액은 빼고 계산해요">오늘 <span class="${tone(chg)}">${fmtS(chg)} (${fmtPct(chg/start,2)})</span></div>`:""}</div>
     <dl>
       ${item("사용 가능", has("avail")?fmtN(sum("avail")):"–")}
       ${item("증거금 사용", has("margin")?fmtN(sum("margin")):op.length?fmtN(op.reduce((a,x)=>a+(x.margin||0),0)):"–")}
