@@ -37,6 +37,7 @@ NOTES_FILE = DATA / "notes.json"
 STATUS_FILE = DATA / "status.json"
 REBATES_FILE = DATA / "rebates.json"
 FX_FILE = DATA / "fx.json"
+WITHDRAW_FILE = DATA / "withdrawals.json"  # 출금 기록 (주소·TxID는 저장 안 함: 저장소가 공개라서)
 BALANCE_FILE = DATA / "balance.json"  # 지금 계좌 잔고 (수집 때마다)
 OPEN_FILE = DATA / "open.json"   # 보유 중 포지션의 누적 펀딩비 (청산되면 체결 기록에 합쳐짐)
 
@@ -50,7 +51,7 @@ class ApiError(RuntimeError):
     pass
 
 
-VERSION = "3.17"
+VERSION = "3.24"
 try:
     _SECRETS = json.loads(os.environ.get("TJ_SECRETS") or "{}")
 except ValueError:
@@ -206,6 +207,34 @@ class OKX:
     def equity(self):
         bal = self.get("/api/v5/account/balance")
         return num(bal[0].get("totalEq")) if bal else None
+
+    WD_STATE = {"-3": "취소 중", "-2": "취소됨", "-1": "실패", "0": "대기", "1": "보내는 중", "2": "완료", "7": "승인됨",
+                "10": "이체 대기", "4": "검토 중", "5": "검토 중", "6": "검토 중", "8": "검토 중", "9": "검토 중", "12": "검토 중",
+                "15": "검토 중", "16": "검토 중", "17": "검토 중"}
+
+    def withdrawals(self, since_ms):
+        """출금 기록. since_ms 이후만 (상태가 바뀌는 최근 건도 다시 받아 덮어씀)."""
+        out, after, pages = [], None, 0
+        while pages < 30:
+            rows = self.get("/api/v5/asset/withdrawal-history", {"limit": "100", "after": after})
+            pages += 1
+            if not rows:
+                break
+            for r in rows:
+                ts = int(r.get("ts") or 0)
+                if since_ms and ts < since_ms:
+                    continue
+                st = str(r.get("state", ""))
+                out.append({"id": r.get("wdId") or f"{ts}_{r.get('ccy')}", "ts": ts, "ccy": r.get("ccy", ""),
+                            "amt": num(r.get("amt")) or 0.0, "fee": num(r.get("fee")) or 0.0,
+                            "chain": (r.get("chain") or "").split("-", 1)[-1], "state": st,
+                            "stateTxt": self.WD_STATE.get(st, st), "internal": r.get("toAddrType") == "2" or "internal" in (r.get("chain") or "").lower()})
+            oldest = min(int(r.get("ts") or 0) for r in rows)
+            if (since_ms and oldest < since_ms) or len(rows) < 100:
+                break
+            after = str(oldest)
+            time.sleep(0.6)
+        return out
 
     def balance(self):
         """거래 계좌 잔고 + (가능하면) 계정 전체 평가액."""
@@ -530,6 +559,23 @@ def main():
         except ApiError as e:
             print(f"[{ad.name}] 페이백 조회 실패: {e}")
     changed_reb = dump_json(REBATES_FILE, reb) if reb else False
+
+    # 출금 기록: id로 중복 없이 누적, 최근 7일은 상태가 바뀔 수 있어 다시 받음
+    wd = load_json(WITHDRAW_FILE, {})
+    for ad in adapters:
+        if not hasattr(ad, "withdrawals") or not status.get(ad.name, {}).get("ok"):
+            continue
+        have = {x["id"]: x for x in wd.get(ad.name, [])}
+        last = max((x["ts"] for x in have.values()), default=None)
+        try:
+            for x in ad.withdrawals((last - 7 * 86400 * 1000) if last else None):
+                have[x["id"]] = x
+            wd[ad.name] = sorted(have.values(), key=lambda x: x["ts"])
+            print(f"[{ad.name}] 출금 {len(wd[ad.name])}건 보관")
+        except ApiError as e:
+            print(f"[{ad.name}] 출금 기록 조회 실패: {e}")
+    if wd:
+        changed_reb |= dump_json(WITHDRAW_FILE, wd)
 
     # 지금 계좌 잔고 (실패해도 수집은 계속)
     bal = {}
