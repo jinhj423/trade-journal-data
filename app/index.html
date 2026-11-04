@@ -123,7 +123,7 @@ html{-webkit-tap-highlight-color:transparent}
 .bal .big{font-family:var(--num);font-size:28px;font-weight:600;letter-spacing:-.02em;line-height:1.2;margin:4px 0 2px;font-variant-numeric:tabular-nums}
 .bal .big small{font-size:13px;font-weight:500;color:var(--text-2);margin-left:6px;letter-spacing:0}
 .bal .chg{font-size:13px;color:var(--text-2);margin-top:2px}
-.bal dl{display:grid;grid-template-columns:repeat(4,auto);gap:4px 28px;margin:0}
+.bal dl{display:grid;grid-auto-flow:column;grid-auto-columns:auto;gap:4px 28px;margin:0}
 .bal dl div{display:flex;flex-direction:column;gap:2px}
 .bal .mbar{height:3px;background:var(--raise);border-radius:2px;margin-top:4px;overflow:hidden;width:100%;min-width:80px}
 .bal .mbar i{display:block;height:100%;background:var(--ditto)}
@@ -383,7 +383,7 @@ label.btn{cursor:pointer}
   .kvl > div{padding:11px 0}
   .kvl > div:nth-child(n+3){border-top:1px solid var(--line)}
   .bal{grid-template-columns:1fr}
-  .bal dl{grid-template-columns:1fr 1fr;gap:10px 16px;padding-top:10px;border-top:1px solid var(--line)}
+  .bal dl{grid-auto-flow:row;grid-template-columns:1fr 1fr;gap:10px 16px;padding-top:10px;border-top:1px solid var(--line)}
   .wdrow.h{display:none}
   .wdrow{grid-template-columns:1fr auto;grid-template-areas:"a b" "c d";row-gap:2px;padding:12px 4px}
   .wdrow > *{display:none}
@@ -570,7 +570,7 @@ var TJSeal=(()=>{var M1=Object.create;var kf=Object.defineProperty;var T1=Object
 const DEFAULT_REASONS = ["지표","스캐너","작도","기타"];
 const DEFAULT_TAGS = ["손절 미준수","근거 없는 진입","추격 진입","조기 익절","원칙 밖 추가매수","과한 레버리지·비중","보복 매매","혼조 구간 진입"];
 const CLOSE_TYPE = {"1":"부분청산","2":"전체청산","3":"강제청산","4":"부분 강제청산","5":"ADL","6":"ADL"};
-const APP_VERSION = "3.29";
+const APP_VERSION = "3.30";
 const EXCHANGES = {
   okx: { name:"OKX", url:"https://www.okx.com/account/my-api",
     fields:[["API Key","OKX_API_KEY"],["Secret Key","OKX_SECRET_KEY"],["Passphrase","OKX_PASSPHRASE"]],
@@ -734,16 +734,21 @@ function balPanel(){
   const op = (S.open||[]).filter(x=>exs.includes(x.exchange));
   const live = !!(S.marksTs && op.length);
   if(live){ const d = op.reduce((a,x)=>a+((livePos(x).upl||0)-(x.upl||0)),0); eq += d; upl += d; }
-  // 오늘 증감: 출금한 돈은 손실이 아니므로 다시 더해서 봄
-  const t0 = dayStart(kstDay(Date.now())), wdToday = wdSum(wdIn(t0, Infinity).filter(x=>exs.includes(x.exchange)));
-  const start = equityOn(kstDay(Date.now())), chg = start ? eq - start + wdToday : null;
+  // 큰 숫자 = 원래 계좌 (미실현 손익 뺀 값). 평가 잔고(미실현 포함)는 오른쪽에 따로
+  const base = sum("equity") - sum("upl");
+  // 오늘 증감 = 오늘 실현한 손익 (+페이백). 미실현과 출금은 들어가지 않음
+  const t0 = dayStart(kstDay(Date.now()));
+  const chg = S.trades.filter(x=>x.uTime>=t0 && exs.includes(exOf(x))).reduce((a,x)=>a+(x.realizedPnl||0),0)
+            + (rebOn() ? (S.rebates||[]).filter(r=>r.ts>=t0 && exs.includes(r.ex||"okx")).reduce((a,r)=>a+r.amt,0) : 0);
+  const start = base - chg;
   const fund = has("funding") ? sum("funding") + sum("earn") : 0;
   const item = (k, v, cls="") => `<div><dt>${k}</dt><dd class="${cls}">${v}</dd></div>`;
   return `<section class="panel bal" id="balPanel">
-    <div><div class="lbl">계좌 잔고 <span class="dim" style="font-size:12px">${exs.length>1?exs.map(k=>EX_NAME[k]||k).join(" + ")+", ":""}선물 계좌</span></div>
-      <div class="big">${fmtN(eq)}<small>USDT</small></div>${kr(eq) ? `<span class="krw" title="${esc(fxTitle())}">${krw(eq,false)}</span>` : ""}
-      ${chg!=null?`<div class="chg" title="오늘 첫 수집(0시 무렵) 잔고 대비. 출금한 금액은 빼고 계산해요">오늘 <span class="${tone(chg)}">${fmtS(chg)} (${fmtPct(chg/start,2)})</span></div>`:""}</div>
+    <div><div class="lbl">계좌 잔고 <span class="dim" style="font-size:12px">${exs.length>1?exs.map(k=>EX_NAME[k]||k).join(" + ")+", ":""}선물 계좌, 미실현 손익 제외</span></div>
+      <div class="big">${fmtN(base)}<small>USDT</small></div>${kr(base) ? `<span class="krw" title="${esc(fxTitle())}">${krw(base,false)}</span>` : ""}
+      <div class="chg" title="오늘 청산한 매매의 실현손익${rebOn()?"과 페이백":""}. 미실현 손익과 출금은 들어가지 않아요">오늘 실현 <span class="${tone(chg)}">${fmtS(chg)}${start>0?` (${fmtPct(chg/start,2)})`:""}</span></div></div>
     <dl>
+      ${item("평가 잔고 <span class=\"dim\" style=\"font-size:11px\">미실현 포함</span>", fmtN(eq))}
       ${item("사용 가능", has("avail")?fmtN(sum("avail")):"–")}
       ${(()=>{ const u = marginUse(); return u && u.n
         ? `<div title="보유 포지션 마진 합계 ÷ 미실현 손익을 뺀 계좌 (${fmtN(u.base)} USDT)"><dt>잡은 마진</dt><dd>${fmtN(u.m)} <span class="${useTone(u.pct)}" style="font-size:13px">${(u.pct*100).toFixed(1)}%</span></dd><div class="mbar"><i style="width:${Math.min(100,u.pct*100).toFixed(1)}%"></i></div></div>`
