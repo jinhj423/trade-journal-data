@@ -458,5 +458,14 @@
   "mistakes": [],
   "reviewed": true,
   "updated": 1793799960788
+ },
+ "4046452411228672002_1793794720028": {
+  "memo": "",
+  "reasons": [],
+  "mistakes": [
+   "조기 익절"
+  ],
+  "reviewed": false,
+  "updated": 1793803936680
  }
 }
