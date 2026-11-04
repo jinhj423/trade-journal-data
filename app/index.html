@@ -219,6 +219,13 @@ table.t tr.click{cursor:pointer} table.t tr.click:hover td{background:var(--hove
 .cell .r{font-size:11px;color:var(--text-2);font-family:var(--num);font-variant-numeric:tabular-nums}
 .cell .pm{display:none}
 .cell .fill{position:absolute;inset:0;pointer-events:none}
+.cell .wd{position:absolute!important;top:9px;right:9px;width:6px;height:6px;border-radius:50%;background:var(--ditto)}
+body.wdmode #fDir,body.wdmode #fSym,body.wdmode #fSymMore,body.wdmode #fReason{display:none!important}
+.wdrow{display:grid;grid-template-columns:130px 90px 120px 90px 120px 1fr;gap:10px;align-items:center;padding:11px 8px;border-bottom:1px solid var(--line);font-size:13px;font-variant-numeric:tabular-nums}
+.wdrow.h{font-size:12px;color:var(--text-3)}
+.wdrow .r{text-align:right}
+.wdrow.off{opacity:.5}
+.lk{margin-right:6px}
 .cell > :not(.fill){position:relative}
 .cell.wk{background:transparent;border-left:1px solid var(--line);border-radius:0}
 .cal-note{font-size:12px;color:var(--text-3);margin:12px 0 0}
@@ -375,6 +382,11 @@ label.btn{cursor:pointer}
   .kvl > div:nth-child(n+3){border-top:1px solid var(--line)}
   .bal{grid-template-columns:1fr}
   .bal dl{grid-template-columns:1fr 1fr;gap:10px 16px;padding-top:10px;border-top:1px solid var(--line)}
+  .wdrow.h{display:none}
+  .wdrow{grid-template-columns:1fr auto;grid-template-areas:"a b" "c d";row-gap:2px;padding:12px 4px}
+  .wdrow > *{display:none}
+  .wdrow .w-when{display:block;grid-area:c;font-size:12px;color:var(--text-3)} .wdrow .w-ccy{display:block;grid-area:a;font-weight:600}
+  .wdrow .w-amt{display:block;grid-area:b;font-weight:600} .wdrow .w-st{display:block;grid-area:d;font-size:12px;color:var(--text-3)}
   .prow.h{display:none}
   .prow{grid-template-columns:1fr auto;grid-template-areas:"a b" "c b";row-gap:3px;padding:12px 2px}
   .prow > *{display:none}
@@ -556,7 +568,7 @@ var TJSeal=(()=>{var M1=Object.create;var kf=Object.defineProperty;var T1=Object
 const DEFAULT_REASONS = ["지표","스캐너","작도","기타"];
 const DEFAULT_TAGS = ["손절 미준수","근거 없는 진입","추격 진입","조기 익절","원칙 밖 추가매수","과한 레버리지·비중","보복 매매","혼조 구간 진입"];
 const CLOSE_TYPE = {"1":"부분청산","2":"전체청산","3":"강제청산","4":"부분 강제청산","5":"ADL","6":"ADL"};
-const APP_VERSION = "3.23";
+const APP_VERSION = "3.24";
 const EXCHANGES = {
   okx: { name:"OKX", url:"https://www.okx.com/account/my-api",
     fields:[["API Key","OKX_API_KEY"],["Secret Key","OKX_SECRET_KEY"],["Passphrase","OKX_PASSPHRASE"]],
@@ -598,7 +610,7 @@ const isLive = () => !!(cfg.owner && cfg.repo && cfg.token);
 
 const S = { rebates:[], reason:"all", trades:[], allTrades:[], connected:new Set(), secretsOk:false, exMsg:{}, equity:{days:{}}, notes:{}, status:{}, live:false,
   period:"today", from:"", to:"", dir:"all", ex:"all", sym:"all", tab:"dash",
-  calMonth:null, listDay:null, unreviewed:false, regret:false, marks:null, marksTs:0, marksFail:0, marksOff:false, open:[], openTs:{}, listLimit:60, drawerId:null, drawerList:[], run:null };
+  calMonth:null, listDay:null, unreviewed:false, regret:false, listKind:"trades", wd:[], marks:null, marksTs:0, marksFail:0, marksOff:false, open:[], openTs:{}, listLimit:60, drawerId:null, drawerList:[], run:null };
 
 /* 포맷 */
 const dayFmt = new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit"});
@@ -713,7 +725,7 @@ function balPanel(){
   return `<section class="panel bal" id="balPanel">
     <div><div class="lbl">계좌 잔고 <span class="dim" style="font-size:12px">${exs.length>1?exs.map(k=>EX_NAME[k]||k).join(" + ")+", ":""}선물 계좌</span></div>
       <div class="big">${fmtN(eq)}<small>USDT</small></div>${kr(eq) ? `<span class="krw" title="${esc(fxTitle())}">${krw(eq,false)}</span>` : ""}
-      ${chg!=null?`<div class="chg" title="오늘 첫 수집(0시 무렵) 잔고 대비. 입출금도 포함돼요">오늘 <span class="${tone(chg)}">${fmtS(chg)} (${fmtPct(chg/start,2)})</span></div>`:""}</div>
+      ${chg!=null?`<div class="chg" title="오늘 첫 수집(0시 무렵) 잔고 대비. 입출금도 포함돼요">오늘 <span class="${tone(chg)}">${fmtS(chg)} (${fmtPct(chg/start,2)})</span>${(()=>{ const t0=dayStart(kstDay(Date.now())), w=wdSum(wdIn(t0, Infinity).filter(x=>exs.includes(x.exchange))); return w?`<span class="dim">, 출금 ${fmtN(w,0)} 빼면 </span><span class="${tone(chg+w)}">${fmtS(chg+w)}</span>`:""; })()}</div>`:""}</div>
     <dl>
       ${item("사용 가능", has("avail")?fmtN(sum("avail")):"–")}
       ${item("증거금 사용", has("margin")?fmtN(sum("margin")):op.length?fmtN(op.reduce((a,x)=>a+(x.margin||0),0)):"–")}
@@ -747,14 +759,20 @@ async function refreshMarks(){
 // 보유 중 포지션 (누적 펀딩비). 청산되면 체결 기록의 fundingFee로 들어감
 const flatOpen = o => Object.entries(o||{}).filter(([k])=>k!=="ts").flatMap(([ex,a])=>Array.isArray(a)?a.map(x=>({...x, exchange:ex})):[]);
 const openNow = () => (S.open||[]).filter(x=>S.connected.has(x.exchange) && (S.ex==="all"||S.ex===x.exchange) && (S.sym==="all"||S.sym===x.base) && (S.dir==="all"||S.dir===x.direction));
+// 출금 기록 (취소·실패는 합계에서 뺌)
+const flatWd = o => Object.entries(o||{}).flatMap(([ex,a])=>Array.isArray(a)?a.map(x=>({...x, exchange:ex})):[]).sort((a,b)=>b.ts-a.ts);
+const wdOk = x => !["-1","-2","-3"].includes(String(x.state));
+const wdUsd = x => USD.has(x.ccy||"USDT");
+const wdIn = (start, end) => (S.wd||[]).filter(x=>x.ts>=start && x.ts<end && S.connected.has(x.exchange) && (S.ex==="all"||S.ex===x.exchange));
+const wdSum = a => a.filter(x=>wdOk(x) && wdUsd(x)).reduce((t,x)=>t+x.amt,0);
 /* 로드 */
 async function loadAll(){
   $("#view").innerHTML = '<div class="loading">불러오는 중</div>';
   if(VIEW){
     document.body.classList.add("view"); $("#viewTag").hidden = false; $("#sample").hidden = true;
     try{
-      const [tr, eq, st, nt, rb, fx, op, bl] = await Promise.all([rawGet("data/trades.json"), rawGet("data/equity.json"), rawGet("data/status.json"), rawGet("data/notes.json"), rawGet("data/rebates.json"), rawGet("data/fx.json").catch(()=>null), rawGet("data/open.json").catch(()=>null), rawGet("data/balance.json").catch(()=>null)]);
-      S.rebates = flatRebates(rb); S.fx = fx; S.open = flatOpen(op); S.openTs = {ts: op && op.ts}; S.bal = bl || null;
+      const [tr, eq, st, nt, rb, fx, op, bl, wd] = await Promise.all([rawGet("data/trades.json"), rawGet("data/equity.json"), rawGet("data/status.json"), rawGet("data/notes.json"), rawGet("data/rebates.json"), rawGet("data/fx.json").catch(()=>null), rawGet("data/open.json").catch(()=>null), rawGet("data/balance.json").catch(()=>null), rawGet("data/withdrawals.json").catch(()=>null)]);
+      S.rebates = flatRebates(rb); S.fx = fx; S.open = flatOpen(op); S.openTs = {ts: op && op.ts}; S.bal = bl || null; S.wd = flatWd(wd);
       if(!tr) throw new Error("이 매매일지는 지금 공개되어 있지 않아요.");
       S.allTrades = tr.trades||[]; S.equity = eq||{days:{}}; S.status = st||{}; S.notes = nt||{}; S.live = true;
       const fromStatus = Object.keys(S.status);
@@ -781,8 +799,8 @@ async function loadAll(){
     }
   } else if(isLive()){
     try{
-      const [tr, eq, st, nt, rb, fx, op, bl] = await Promise.all([ghRaw("data/trades.json"), ghRaw("data/equity.json"), ghRaw("data/status.json"), ghNotes(), ghRaw("data/rebates.json").catch(()=>null), ghRaw("data/fx.json").catch(()=>null), ghRaw("data/open.json").catch(()=>null), ghRaw("data/balance.json").catch(()=>null)]);
-      S.rebates = flatRebates(rb); S.fx = fx; S.open = flatOpen(op); S.openTs = {ts: op && op.ts}; S.bal = bl || null;
+      const [tr, eq, st, nt, rb, fx, op, bl, wd] = await Promise.all([ghRaw("data/trades.json"), ghRaw("data/equity.json"), ghRaw("data/status.json"), ghNotes(), ghRaw("data/rebates.json").catch(()=>null), ghRaw("data/fx.json").catch(()=>null), ghRaw("data/open.json").catch(()=>null), ghRaw("data/balance.json").catch(()=>null), ghRaw("data/withdrawals.json").catch(()=>null)]);
+      S.rebates = flatRebates(rb); S.fx = fx; S.open = flatOpen(op); S.openTs = {ts: op && op.ts}; S.bal = bl || null; S.wd = flatWd(wd);
       S.allTrades = ((tr && tr.trades) || []); S.equity = eq || {days:{}}; S.status = st || {}; S.notes = nt.data || {}; S.live = true;
       await loadConnected();
       S.trades = S.allTrades.filter(t=>S.connected.has(exOf(t)));
@@ -1002,7 +1020,7 @@ function maybeSaveView(){
   }, 1500);
 }
 /* 뒤로가기: 탭 이동·상세 창·설정을 기록에 쌓아서, 뒤로 버튼이 사이트를 닫지 않고 한 단계씩 돌아가게 */
-const navKey = () => JSON.stringify({tab:S.tab, day:S.listDay, un:S.unreviewed, rg:S.regret, rs:S.reason});
+const navKey = () => JSON.stringify({tab:S.tab, day:S.listDay, un:S.unreviewed, rg:S.regret, rs:S.reason, lk:S.listKind});
 const exitGuard = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true || matchMedia("(pointer: coarse)").matches;
 let lastNav = null, navLock = false, overlayOn = false, backAt = 0;
 function navPush(){
@@ -1029,7 +1047,7 @@ addEventListener("popstate", e=>{
   overlayOn = false;
   if(st.tj==="nav"){
     if(st.k===lastNav) return;
-    try{ const v = JSON.parse(st.k); navLock = true; Object.assign(S, {tab:v.tab, listDay:v.day, unreviewed:v.un, regret:v.rg, reason:v.rs}); render(); scrollTo({top:0}); }
+    try{ const v = JSON.parse(st.k); navLock = true; Object.assign(S, {tab:v.tab, listDay:v.day, unreviewed:v.un, regret:v.rg, reason:v.rs, listKind:v.lk||"trades"}); render(); scrollTo({top:0}); }
     finally{ navLock = false; lastNav = st.k; }
   } else if(st.tj==="root"){
     // 맨 처음 화면에서 뒤로: 한 번 더 누르면 닫힘
@@ -1053,6 +1071,7 @@ function render(){
   $$("[data-tab]").forEach(b=>b.setAttribute("aria-selected", b.dataset.tab===S.tab));
   $("#fPeriod").hidden = S.tab==="cal";
   $("#fRange").hidden = S.tab==="cal" || S.period!=="custom";
+  document.body.classList.toggle("wdmode", S.tab==="list" && S.listKind==="wd" && !!(S.wd||[]).length);
   if(S.period==="custom"){
     const today = kstDay(Date.now());
     $("#rFrom").value = S.from; $("#rFrom").max = S.to || today; $("#rFrom").min = (VIEW && VIEW.from) || "";
@@ -1101,6 +1120,7 @@ function renderDash(){
   if(s.ret!=null) subParts.push(`<span class="${tone(s.ret)}">${fmtPct(s.ret,2)}</span> 자산 대비`);
   if(s.rebate) subParts.push(rebOn() ? `페이백 ${fmtS(s.rebate)}${s.rebEst?"(추정)":""} 포함` : `페이백 ${fmtS(s.rebate)}${s.rebEst?"(추정)":""} 별도`);
   subParts.push(`${s.n}건 청산`);
+  { const w = wdIn(periodStart(), periodEnd()), ws = wdSum(w); if(ws) subParts.push(`출금 ${fmtN(ws,0)} USDT <button class="textbtn" id="goWd">보기</button>`); }
   if(open) subParts.push(`${open}건 보유 중`);
   $("#view").innerHTML = balPanel() + posPanel() + `
   <div class="grid-top">
@@ -1152,6 +1172,7 @@ function renderDash(){
   drawEquity(s);
   if(innerWidth>1060){ const d=$(".kv").offsetHeight-$(".ov").offsetHeight; if(d>4) drawEquity(s, Math.min(460, 250+d)); }
   $$("#view [data-trade]").forEach(el=>el.addEventListener("click",()=>openDrawer(el.dataset.trade, s.t.slice().reverse())));
+  if($("#goWd")) $("#goWd").onclick = ()=>{ S.listKind = "wd"; S.tab = "list"; scrollTo({top:0}); render(); };
   $("#goUnrev").onclick = ()=>{ S.unreviewed = true; S.regret = false; S.tab = "list"; render(); };
   if($("#goRegret")) $("#goRegret").onclick = ()=>{ S.regret = true; S.unreviewed = false; S.tab = "list"; scrollTo({top:0}); render(); };
   $$("#view tr[data-reason]").forEach(tr=>tr.onclick=()=>{ S.reason = tr.dataset.reason; render(); scrollTo({top:0,behavior:"smooth"}); });
@@ -1287,7 +1308,7 @@ function renderCal(){
       const x=D[d-1], has=x.n||x.reb; wk.pnl+=x.pnl; wk.n+=x.n;
       const a = has ? (0.14+0.62*Math.sqrt(Math.abs(x.pnl)/maxAbs)).toFixed(2) : 0;
       cells.push(`<button class="cell ${x.n?"has":""} ${x.key===today?"today":""}" ${x.n?`data-day="${x.key}"`:"disabled"} aria-label="${x.key} ${has?fmtS(x.pnl)+" USDT":"매매 없음"}">
-        ${has?`<span class="fill" style="background:var(${x.pnl>=0?"--up":"--down"});opacity:${a}"></span>`:""}<span class="d">${d}</span>
+        ${has?`<span class="fill" style="background:var(${x.pnl>=0?"--up":"--down"});opacity:${a}"></span>`:""}<span class="d">${d}</span>${(()=>{ const t0=dayStart(x.key), w=wdSum(wdIn(t0, t0+86400000)); return w?`<span class="wd" title="출금 ${fmtN(w,0)} USDT"></span>`:""; })()}
         ${has?`<span class="p">${fmtS(x.pnl,Math.abs(x.pnl)>=1000?0:1)}</span><span class="r">${x.pct!=null?fmtPct(x.pct,2)+", ":""}${x.n?x.n+"건":"페이백"}</span><span class="pm">${short(x.pnl)}</span>`:""}</button>`);
     }
     if(i%7===6){ cells.push(`<div class="cell wk">${wk.n?`<span class="p ${tone(wk.pnl)}">${fmtS(wk.pnl,Math.abs(wk.pnl)>=1000?0:1)}</span><span class="r">${wk.n}건</span><span class="pm ${tone(wk.pnl)}">${short(wk.pnl)}</span>`:""}</div>`); wk={pnl:0,n:0}; }
@@ -1301,13 +1322,14 @@ function renderCal(){
     <button class="btn" id="cNow" style="margin-left:4px">이번 달</button>
     <div class="cal-sum n">
       <div>월 손익<b class="${tone(tot)}">${fmtS(tot)}${mPct!=null?`<small>${fmtPct(mPct,2)}</small>`:""}</b>${kr(tot)}</div>
+      ${(()=>{ const m0=dayStart(`${yy}-${String(mm).padStart(2,"0")}-01`), m1=Date.parse(new Date(Date.UTC(yy,mm,1)).toISOString().slice(0,10)+"T00:00:00+09:00"), w=wdSum(wdIn(m0,m1)); return w?`<div>출금<b>${fmtN(w,0)} <small class="dim">USDT</small></b></div>`:""; })()}
       <div>수익일 / 손실일<b>${act.filter(x=>x.pnl>0).length} / ${act.filter(x=>x.pnl<0).length}</b></div>
       ${best&&best.pnl>0?`<div>최고의 날<b class="up">${fmtS(best.pnl,1)} <small class="dim">${best.d}일</small></b></div>`:""}
       ${worst&&worst.pnl<0?`<div>최악의 날<b class="down">${fmtS(worst.pnl,1)} <small class="dim">${worst.d}일</small></b></div>`:""}
     </div>
   </div>
   <div class="cal">${cells.join("")}</div>
-  <p class="cal-note">${rebOn() && rebExact() && S.rebates.length ? "일별 손익에 그날 들어온 수수료 페이백이 포함돼 있어요. " : ""}색이 진할수록 그 달에서 손익이 큰 날이에요. %는 그날 시작 자산 대비, 날짜를 누르면 그날 매매가 열려요.</p>
+  <p class="cal-note">${rebOn() && rebExact() && S.rebates.length ? "일별 손익에 그날 들어온 수수료 페이백이 포함돼 있어요. " : ""}색이 진할수록 그 달에서 손익이 큰 날이에요. 오른쪽 위 보라 점은 출금한 날이에요. %는 그날 시작 자산 대비, 날짜를 누르면 그날 매매가 열려요.</p>
   </section>
   <section class="panel"><h3>월별</h3>${monthTable(t)}</section>`;
   const shift=k=>{ const d=new Date(Date.UTC(yy,mm-1+k,1)); S.calMonth=`${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}`; renderCal(); };
@@ -1333,13 +1355,34 @@ function listData(){
   if(S.regret) a = a.filter(isRegret);
   return a.sort((x,y)=>y.uTime-x.uTime);
 }
+function renderWd(){
+  const all = wdIn(periodStart(), periodEnd()), sum = wdSum(all), fee = all.filter(x=>wdOk(x)&&wdUsd(x)).reduce((t,x)=>t+(x.fee||0),0);
+  const multi = new Set((S.wd||[]).map(x=>x.exchange)).size>1;
+  $("#view").innerHTML = `
+  <section class="panel">
+  <div class="list-top">${listKindSw()}<span class="sum n">${all.length}건, 합계 <b>${fmtN(sum)}</b> USDT${kr(sum,"krw in")}${fee?`<span class="dim">, 수수료 ${fmtN(fee,1)}</span>`:""}</span></div>
+  <div class="wdrow h"><span>출금 시각</span><span>코인</span><span class="r">금액</span><span class="r">수수료</span><span style="padding-left:16px">네트워크</span><span style="padding-left:16px">상태</span></div>
+  ${all.length ? all.map(x=>`<div class="wdrow ${wdOk(x)?"":"off"}">
+      <span class="w-when n">${fmtDT(x.ts)}</span>
+      <span class="w-ccy">${esc(x.ccy)}${multi?` <small class="dim">${esc(EX_NAME[x.exchange]||x.exchange)}</small>`:""}</span>
+      <span class="r n w-amt">${fmtN(x.amt, x.amt%1?2:0)}</span>
+      <span class="r n mid">${x.fee?fmtN(x.fee,2):"–"}</span>
+      <span class="mid" style="padding-left:16px">${esc(x.chain||"–")}${x.internal?" (내부)":""}</span>
+      <span class="w-st ${x.state==="2"?"":"mid"}" style="padding-left:16px">${esc(x.stateTxt||x.state)}</span></div>`).join("") : `<div class="empty">${periodName()}에 출금한 기록이 없어요.</div>`}
+  <p class="cal-note" style="margin-top:12px">출금 주소와 거래 ID는 저장하지 않아요. 매매 손익과는 별개라 통계에는 들어가지 않아요.</p>
+  </section>`;
+  bindListKind();
+}
+const listKindSw = () => (S.wd||[]).length ? `<div class="chipset lk" id="listKind"><button data-v="trades" aria-pressed="${S.listKind!=="wd"}">매매</button><button data-v="wd" aria-pressed="${S.listKind==="wd"}">출금</button></div>` : "";
+function bindListKind(){ const el=$("#listKind"); if(el) el.onclick = e=>{ const b=e.target.closest("button"); if(!b) return; S.listKind=b.dataset.v; render(); }; }
 function renderList(){
+  if(S.listKind==="wd" && (S.wd||[]).length){ renderWd(); return; }
   const a = listData(), s = stats(a), shown = a.slice(0,S.listLimit), multi = new Set(S.trades.map(exOf)).size>1;
   const [, m, d] = (S.listDay||"--").split("-");
   $("#view").innerHTML = `
   <section class="panel">
   <div class="list-top">
-    ${S.listDay?`<span class="pillx">${+m}월 ${+d}일 매매<button id="clrDay" aria-label="날짜 필터 해제">${ARROW("M3 3l8 8M11 3l-8 8")}</button></span>`:""}
+    ${S.listDay?"":listKindSw()}${S.listDay?`<span class="pillx">${+m}월 ${+d}일 매매<button id="clrDay" aria-label="날짜 필터 해제">${ARROW("M3 3l8 8M11 3l-8 8")}</button></span>`:""}
     <label class="check"><input type="checkbox" id="unrev" ${S.unreviewed?"checked":""}> 복기 안 한 매매만</label>
     <label class="check"><input type="checkbox" id="regretOnly" ${S.regret?"checked":""}> 아쉬운 진입만</label>
     <span class="sum n">${a.length}건, 합계 <b class="${tone(s.total)}">${fmtS(s.total)}</b> USDT${kr(s.total,"krw in")}</span>
@@ -1348,6 +1391,7 @@ function renderList(){
   ${shown.length ? shown.map(x=>rowHtml(x,multi)).join("") : `<div class="empty">${S.regret&&!S.unreviewed?"이 기간에 아쉬운 진입으로 체크한 매매가 없어요. 매매를 열고 진입 평가에서 체크하면 여기 모여요.":S.unreviewed?"복기할 매매가 없어요.":"이 조건에 맞는 매매가 없어요."}</div>`}
   ${a.length>S.listLimit?`<div class="more"><button class="btn" id="more">${a.length-S.listLimit}건 더 보기</button></div>`:""}
   </section>`;
+  bindListKind();
   $("#unrev").onchange = e => { S.unreviewed = e.target.checked; renderList(); };
   $("#regretOnly").onchange = e => { S.regret = e.target.checked; renderList(); };
   if($("#clrDay")) $("#clrDay").onclick = ()=>{ S.listDay=null; renderList(); };
@@ -1771,7 +1815,7 @@ $("#rTo").addEventListener("change", e=>{ const today=kstDay(Date.now()); S.to =
 $("#rToday").onclick = ()=>{ const today=kstDay(Date.now()); S.to = S.to ? "" : today; if(S.to===today){ $("#rTo").disabled=false; try{ $("#rTo").showPicker(); }catch{} } render(); };
 seg("#fSym","sym");
 $("#fSymMore").onchange = e => { S.sym=e.target.value||"all"; render(); };
-$$("button[data-tab]").forEach(b=>b.onclick=()=>{ scrollTo({top:0}); S.tab=b.dataset.tab; if(S.tab!=="list"){ S.listDay=null; S.unreviewed=false; S.regret=false; } render(); });
+$$("button[data-tab]").forEach(b=>b.onclick=()=>{ scrollTo({top:0}); S.tab=b.dataset.tab; if(S.tab!=="list"){ S.listDay=null; S.unreviewed=false; S.regret=false; S.listKind="trades"; } render(); });
 $("#btnSync").onclick=triggerSync; $("#btnSettings").onclick=()=>openSettings(); $("#btnConnect").onclick=()=>openSettings("gh");
 $("#veil").onclick=closeDrawer; $("#dClose").onclick=closeDrawer; $("#dSave").onclick=saveNote;
 $("#dPrev").onclick=()=>step(-1); $("#dNext").onclick=()=>step(1);
