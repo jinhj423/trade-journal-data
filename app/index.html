@@ -129,7 +129,7 @@ html{-webkit-tap-highlight-color:transparent}
 .bal .when{grid-column:1/-1;font-size:12px;color:var(--text-3);margin:4px 0 0}
 .pos{margin-bottom:12px}
 .pos > h3 .tot{margin-left:auto;font-size:15px;font-weight:600;font-family:var(--num)}
-.prow{display:grid;grid-template-columns:minmax(120px,1.3fr) repeat(4,minmax(80px,1fr)) minmax(70px,.8fr) 60px minmax(110px,1.1fr);gap:10px;align-items:center;padding:11px 8px;border-bottom:1px solid var(--line);font-size:13px;width:100%;text-align:left;font-variant-numeric:tabular-nums;border-radius:0}
+.prow{display:grid;grid-template-columns:minmax(120px,1.3fr) repeat(5,minmax(76px,1fr)) minmax(70px,.8fr) 60px minmax(110px,1.1fr);gap:10px;align-items:center;padding:11px 8px;border-bottom:1px solid var(--line);font-size:13px;width:100%;text-align:left;font-variant-numeric:tabular-nums;border-radius:0}
 .prow:last-child{border-bottom:0}
 .prow.h{font-size:12px;color:var(--text-3);padding-top:4px}
 button.prow:hover{background:var(--hover)}
@@ -238,7 +238,7 @@ body.wdmode #fDir,body.wdmode #fSym,body.wdmode #fSymMore,body.wdmode #fReason{d
 .pillx button svg{width:10px;height:10px}
 .check{display:inline-flex;align-items:center;gap:8px;cursor:pointer;color:var(--text-2);font-size:13px}
 .check input{width:15px;height:15px;accent-color:var(--ditto)}
-.row{display:grid;grid-template-columns:96px minmax(110px,1.2fr) 74px repeat(2,minmax(72px,1fr)) minmax(80px,.9fr) minmax(96px,1fr) 70px 62px 44px;gap:10px;align-items:center;padding:11px 8px;border-bottom:1px solid var(--line);font-size:13px;text-align:left;width:100%;font-variant-numeric:tabular-nums;border-radius:0}
+.row{display:grid;grid-template-columns:96px minmax(110px,1.2fr) 74px repeat(2,minmax(72px,1fr)) minmax(70px,.8fr) minmax(80px,.9fr) minmax(96px,1fr) 70px 62px 44px;gap:10px;align-items:center;padding:11px 8px;border-bottom:1px solid var(--line);font-size:13px;text-align:left;width:100%;font-variant-numeric:tabular-nums;border-radius:0}
 .row > .r,.row .when,.row .pnl,.row .ret{font-family:var(--num)}
 .row.h{font-size:12px;color:var(--text-3);padding-top:10px;cursor:default;font-family:var(--body)}
 .row.h > *{font-family:var(--body)}
@@ -568,7 +568,7 @@ var TJSeal=(()=>{var M1=Object.create;var kf=Object.defineProperty;var T1=Object
 const DEFAULT_REASONS = ["지표","스캐너","작도","기타"];
 const DEFAULT_TAGS = ["손절 미준수","근거 없는 진입","추격 진입","조기 익절","원칙 밖 추가매수","과한 레버리지·비중","보복 매매","혼조 구간 진입"];
 const CLOSE_TYPE = {"1":"부분청산","2":"전체청산","3":"강제청산","4":"부분 강제청산","5":"ADL","6":"ADL"};
-const APP_VERSION = "3.26";
+const APP_VERSION = "3.27";
 const EXCHANGES = {
   okx: { name:"OKX", url:"https://www.okx.com/account/my-api",
     fields:[["API Key","OKX_API_KEY"],["Secret Key","OKX_SECRET_KEY"],["Passphrase","OKX_PASSPHRASE"]],
@@ -694,18 +694,19 @@ function posPanel(){
     const tr = S.trades.find(t=>t.id===x.id), tag = tr ? `button class="prow" data-trade="${esc(x.id)}"` : `div class="prow"`;
     return `<${tag}>
       <span class="s"><b>${esc(x.base)}</b> <span class="side ${x.direction}">${dirTxt(x.direction)} ${levTxt(x)}</span>${multi?` <small class="dim">${esc(EX_NAME[x.exchange]||x.exchange)}</small>`:""}</span>
-      <span class="r n">${x.notional!=null?fmtN(x.notional,0):"–"}<small class="dim"> USDT</small></span>
+      <span class="r n">${x.margin!=null?fmtN(x.margin,0):"–"}<small class="dim"> USDT</small></span>
+      <span class="r n mid">${x.notional!=null?fmtN(x.notional,0):"–"}</span>
       <span class="r n">${fmtPx(x.avgPx)}</span>
       <span class="r n">${fmtPx(x.mark)}</span>
       <span class="r n">${fmtPx(x.liqPx)}${x.toLiq!=null?`<small class="dim"> ${(x.toLiq*100).toFixed(1)}%</small>`:""}</span>
       <span class="r n ${tone(x.fundingFee)}">${x.fundingFee?fmtS(x.fundingFee,2):"0"}</span>
       <span class="r mid">${fmtDur(Date.now()-x.cTime)}</span>
       <span class="r u ${tone(x.upl)}">${fmtS(x.upl)}<small>${fmtPct(x.ratio)}</small></span>
-      <span class="sub n">${fmtPx(x.avgPx)} → ${fmtPx(x.mark)}, ${x.notional!=null?fmtN(x.notional,0)+" USDT":""}, ${fmtDur(Date.now()-x.cTime)}${x.liqPx?`, 청산가 ${fmtPx(x.liqPx)}`:""}</span>
+      <span class="sub n">${fmtPx(x.avgPx)} → ${fmtPx(x.mark)}, ${x.margin!=null?`마진 ${fmtN(x.margin,0)} / `:""}${x.notional!=null?"규모 "+fmtN(x.notional,0)+" USDT":""}, ${fmtDur(Date.now()-x.cTime)}${x.liqPx?`, 청산가 ${fmtPx(x.liqPx)}`:""}</span>
     </${tag.split(" ")[0]}>`;
   };
   return `<section class="panel pos" id="posPanel"><h3>보유 중 포지션 <span>${op.length}개</span><b class="tot ${tone(tot)}">${fmtS(tot)}<small class="dim" style="font-size:12px;font-weight:400"> 미실현</small></b></h3>
-    <div class="prow h"><span>종목</span><span class="r">규모</span><span class="r">진입가</span><span class="r">현재가</span><span class="r">청산가</span><span class="r">펀딩비</span><span class="r">보유</span><span class="r">미실현 손익</span></div>
+    <div class="prow h"><span>종목</span><span class="r">마진</span><span class="r">규모</span><span class="r">진입가</span><span class="r">현재가</span><span class="r">청산가</span><span class="r">펀딩비</span><span class="r">보유</span><span class="r">미실현 손익</span></div>
     ${op.map(row).join("")}
     <p class="when">${when}</p></section>`;
 }
@@ -1389,7 +1390,7 @@ function renderList(){
     <label class="check"><input type="checkbox" id="regretOnly" ${S.regret?"checked":""}> 아쉬운 진입만</label>
     <span class="sum n">${a.length}건, 합계 <b class="${tone(s.total)}">${fmtS(s.total)}</b> USDT${kr(s.total,"krw in")}</span>
   </div>
-  <div class="row h"><span>청산</span><span>종목</span><span>방향</span><span class="r">진입가</span><span class="r">청산가</span><span class="r">규모</span><span class="r">실현손익</span><span class="r">수익률</span><span class="r">보유</span><span class="r">복기</span></div>
+  <div class="row h"><span>청산</span><span>종목</span><span>방향</span><span class="r">진입가</span><span class="r">청산가</span><span class="r">마진</span><span class="r">규모</span><span class="r">실현손익</span><span class="r">수익률</span><span class="r">보유</span><span class="r">복기</span></div>
   ${shown.length ? shown.map(x=>rowHtml(x,multi)).join("") : `<div class="empty">${S.regret&&!S.unreviewed?"이 기간에 아쉬운 진입으로 체크한 매매가 없어요. 매매를 열고 진입 평가에서 체크하면 여기 모여요.":S.unreviewed?"복기할 매매가 없어요.":"이 조건에 맞는 매매가 없어요."}</div>`}
   ${a.length>S.listLimit?`<div class="more"><button class="btn" id="more">${a.length-S.listLimit}건 더 보기</button></div>`:""}
   </section>`;
@@ -1410,6 +1411,7 @@ function rowHtml(x, multi){
     <span class="side ${x.direction}">${dirTxt(x.direction)} ${levTxt(x)}</span>
     <span class="r">${fmtPx(x.openAvgPx)}</span>
     <span class="r">${fmtPx(x.closeAvgPx)}</span>
+    <span class="r">${x.margin!=null?fmtN(x.margin,0):"–"}${x.leverEst?"*":""}</span>
     <span class="r mid">${x.notional!=null?fmtN(x.notional,0):"–"}</span>
     <span class="r pnl ${tone(x.realizedPnl)}">${fmtS(x.realizedPnl)}${USD.has(x.ccy||"USDT")?"":" "+esc(x.ccy)}</span>
     <span class="r ret ${tone(x.pnlRatio)}">${fmtPct(x.pnlRatio)}</span>
