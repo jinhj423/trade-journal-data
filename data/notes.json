@@ -551,9 +551,11 @@
   "reasons": [
    "지표"
   ],
-  "mistakes": [],
+  "mistakes": [
+   "근거 없는 진입"
+  ],
   "reviewed": true,
-  "updated": 1793892474090,
+  "updated": 1793892475792,
   "regret": true
  }
 }
