@@ -1,6 +1,48 @@
 {
  "okx": [
   {
+   "id": "4048294907470598145_1794269235939",
+   "instId": "ZEC-USDT-SWAP",
+   "base": "ZEC",
+   "direction": "long",
+   "lever": 10.0,
+   "mgnMode": "isolated",
+   "cTime": 1794269235939,
+   "qty": 1.27,
+   "contracts": 127.0,
+   "avgPx": 1168.9,
+   "markPx": 1176.1,
+   "liqPx": 1059.4359818731118,
+   "upl": 9.144,
+   "uplRatio": 0.0615963726580526,
+   "margin": 148.4503,
+   "notional": 1491.77,
+   "ccy": "USDT",
+   "fundingFee": 0.0,
+   "fee": -0.742251
+  },
+  {
+   "id": "4046452411228672002_1794262590699",
+   "instId": "BTC-USDT-SWAP",
+   "base": "BTC",
+   "direction": "long",
+   "lever": 33.0,
+   "mgnMode": "isolated",
+   "cTime": 1794262590699,
+   "qty": 0.0648,
+   "contracts": 6.48,
+   "avgPx": 75054.1,
+   "markPx": 75120.8,
+   "liqPx": 73112.32681783612,
+   "upl": 4.3222,
+   "uplRatio": 0.0293268455687321,
+   "margin": 147.1529075443006,
+   "notional": 4861.69,
+   "ccy": "USDT",
+   "fundingFee": -0.226052,
+   "fee": -2.431753
+  },
+  {
    "id": "4058062262920728576_1794030721201",
    "instId": "HYPE-USDT-SWAP",
    "base": "HYPE",
@@ -11,16 +53,16 @@
    "qty": 77.9,
    "contracts": 779.0,
    "avgPx": 76.49866110397946,
-   "markPx": 75.229,
-   "liqPx": 69.32966818164147,
-   "upl": -98.9066,
-   "uplRatio": -0.165971676583162,
-   "margin": 596.3473714095791,
-   "notional": 5854.24,
+   "markPx": 75.068,
+   "liqPx": 69.32571200398479,
+   "upl": -111.4485,
+   "uplRatio": -0.1870177965644204,
+   "margin": 596.6534003453577,
+   "notional": 5840.43,
    "ccy": "USDT",
-   "fundingFee": 0.422801,
+   "fundingFee": 0.72883,
    "fee": -2.979623
   }
  ],
- "ts": 1794245081659
+ "ts": 1794274076347
 }
