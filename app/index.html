@@ -2,10 +2,11 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
+<meta name="description" content="OKX·Bitget 선물 매매를 자동으로 모아 복기하는 개인 매매일지">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#060508">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://api.github.com https://raw.githubusercontent.com https://www.okx.com https://api.bitget.com 'self'; img-src 'self' data:; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <title>매매일지</title>
 <link rel="manifest" href="manifest.webmanifest">
@@ -19,11 +20,20 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+/* Hallmark · check · built: the project · redesign: polish · scope: app · genre: modern-minimal */
+/* Hallmark · polish 2026-11: 보조 글자 대비, 태블릿 폭 포지션 표, 포커스·비활성·누름 상태, 작은 글자, 제목 속 설명 분리, 방향 색을 손익 색과 분리 */
+/* Hallmark · waive 39b · app UI: inline caption links and full-width trade rows · the trade rows are 44px+ hit targets and the caption links sit inside stat cells of the journal */
+/* Hallmark · reworded "진입 근거별 성과 줄을 누르면…" to "진입 근거별 성과" plus a caption · 38iii names the description set inside the heading, now a caption under it */
+/* Hallmark · reworded "실수별 손익 복기에서 체크한…" to "실수별 손익" plus a caption · 38iii names the description set inside the heading, now a caption under it */
+/* Hallmark · reworded "보유 중 포지션 N개, 마진…" to "보유 중 포지션" plus a caption · 38iii names the description set inside the heading, now a caption under it */
+/* Hallmark · dismissed 29 · the sticky top bar blurs scrolling trade data under it, no glow or orb */
+/* Hallmark · dismissed 41 · panels inherit the light body ink set on html,body */
+/* Hallmark · answered F19 · four weights: 400 body, 500 units, 600 figures, 700 the wordmark only */
 /* 방향: 거래소(OKX식) 정돈형 대시보드 — 순흑 바탕, 흰 잉크, 연보라 액센트 하나.
    글자 크기는 거래소 앱 기준: 본문 14, 라벨 12, 핵심 숫자 32 */
 :root{
   color-scheme: dark;
-  --bg:#000;
+  --bg:#060508;                /* 거의 검정, 보라 기운 아주 살짝 */
   --panel:#0d0d0f;
   --raise:#17171a;
   --hover:#141417;
@@ -31,31 +41,41 @@
   --line-2:#2b2b30;
   --text:#f5f5f7;
   --text-2:#8e8e96;
-  --text-3:#5d5d65;
+  --text-3:#7a7a82;
   --ditto:#c8a9f5;
   --ditto-wash:rgba(200,169,245,.12);
-  --up:#ff5b67; --up-wash:rgba(255,91,103,.15);
-  --down:#4f9bff; --down-wash:rgba(79,155,255,.15);
+  --red:#ff5b67; --red-wash:rgba(255,91,103,.15);
+  --blue:#4f9bff; --blue-wash:rgba(79,155,255,.15);
+  --up:var(--red); --up-wash:var(--red-wash);
+  --down:var(--blue); --down-wash:var(--blue-wash);
+  --ink-on:#0b0a0f;            /* 밝은 바탕(흰 버튼·연보라 칩) 위 글자 */
+  --ok:#2ebd85;
+  --btn-hover:#222226; --main-hover:#dcdce0; --cell:#121215;
+  --top-bg:rgba(6,5,8,.92); --bnav-bg:rgba(10,10,12,.96);
+  --veil:rgba(0,0,0,.65); --shade:rgba(0,0,0,.5);
+  --field-edge:#5d5d65;        /* 입력칸 테두리: 바탕 대비 3:1 */
   --num:"Inter Tight","IBM Plex Sans KR",system-ui,sans-serif;
   --body:"IBM Plex Sans KR",-apple-system,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
   --r:12px;
 }
-:root[data-updown="intl"]{ --up:#4f9bff; --up-wash:rgba(79,155,255,.15); --down:#ff5b67; --down-wash:rgba(255,91,103,.15); }
+:root[data-updown="intl"]{ --up:var(--blue); --up-wash:var(--blue-wash); --down:var(--red); --down-wash:var(--red-wash); }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-html,body{margin:0;background:var(--bg);color:var(--text)}
+html,body{margin:0;background:var(--bg);color:var(--text);overflow-x:clip}
 body{font:14px/1.55 var(--body);-webkit-font-smoothing:antialiased;min-height:100vh;word-break:keep-all}
 .n,.num{font-family:var(--num);font-variant-numeric:tabular-nums;letter-spacing:-.005em}
 button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0}
 input,textarea,select{font:inherit;font-size:14px;color:var(--text);background:var(--raise);border:1px solid transparent;border-radius:8px;padding:9px 11px;width:100%}
 select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--text-2) 50%),linear-gradient(135deg,var(--text-2) 50%,transparent 50%);background-position:calc(100% - 14px) 52%,calc(100% - 9px) 52%;background-size:5px 5px;background-repeat:no-repeat;padding-right:26px}
 :focus-visible{outline:2px solid var(--ditto);outline-offset:2px}
+.btn:active,.chip:active,.chipset button:active,.navbtn:active,.textbtn:active{transform:translateY(1px)}
 input:focus,textarea:focus,select:focus{outline:none;border-color:var(--ditto)}
+input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--ditto);outline-offset:1px}
 .wrap{max-width:1240px;margin:0 auto;padding:0 24px 72px}
 .up{color:var(--up)} .down{color:var(--down)} .dim{color:var(--text-3)} .mid{color:var(--text-2)}
 
 /* 상단 */
-.top{display:flex;align-items:center;gap:8px;height:60px;border-bottom:1px solid var(--line);margin:0 -24px;padding:0 24px;position:sticky;top:0;background:rgba(0,0,0,.92);backdrop-filter:blur(8px);z-index:20}
+.top{display:flex;align-items:center;gap:8px;height:60px;border-bottom:1px solid var(--line);margin:0 -24px;padding:0 24px;position:sticky;top:0;background:var(--top-bg);backdrop-filter:blur(8px);z-index:20}
 .mark{font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px;margin-right:28px}
 .mark i{display:block;width:10px;height:10px;border-radius:50% 50% 45% 55%/60% 55% 45% 40%;background:var(--ditto)}
 .tabs{display:flex;gap:24px;height:100%;margin-right:auto}
@@ -66,15 +86,15 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--ditto)}
 .feed{display:flex;align-items:center;gap:6px}
 .feed b{font-weight:600;color:var(--text)}
 .feed .s{width:6px;height:6px;border-radius:50%;background:var(--text-3)}
-.feed.ok .s{background:#2ebd85} .feed.bad .s{background:var(--up)} .feed.run .s{background:var(--ditto);animation:blink 1s infinite}
+.feed.ok .s{background:var(--ok)} .feed.bad .s{background:var(--up)} .feed.run .s{background:var(--ditto);animation:blink 1s infinite}
 .feed.bad{cursor:pointer}
 @keyframes blink{50%{opacity:.2}}
 .btn{font-size:13px;font-weight:600;height:32px;padding:0 14px;border-radius:999px;background:var(--raise);color:var(--text);white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:6px}
-.btn:hover{background:#222226}
-.btn.main{background:var(--text);color:#000}
-.btn.main:hover{background:#dcdce0}
-.btn.ditto{background:var(--ditto);color:#000}
-.btn:disabled{opacity:.45;cursor:default}
+.btn:hover{background:var(--btn-hover)}
+.btn.main{background:var(--text);color:var(--ink-on)}
+.btn.main:hover{background:var(--main-hover)}
+.btn.ditto{background:var(--ditto);color:var(--ink-on)}
+.btn:disabled{opacity:.6;cursor:not-allowed;background:var(--raise);color:var(--text-2)}
 .btn .ic{display:none;width:18px;height:18px}
 .krw{display:block;font-size:13px;font-weight:500;color:var(--text-2);font-family:var(--num);font-variant-numeric:tabular-nums;letter-spacing:0}
 .ov .krw{font-size:15px;margin:-2px 0 6px}
@@ -102,12 +122,12 @@ html{-webkit-tap-highlight-color:transparent}
 .chipset button{font-size:13px;font-weight:500;color:var(--text-2);height:30px;padding:0 12px;border-radius:999px}
 .chipset button:hover{color:var(--text)}
 .chipset button[aria-pressed="true"]{background:var(--raise);color:var(--text);font-weight:600}
-.filters select{width:auto;font-size:13px;height:30px;padding:0 26px 0 12px;border-radius:999px;color:var(--text-2)}
+.filters select{width:auto;font-size:13px;height:30px;padding:0 26px 0 12px;border-radius:999px;color:var(--text-2);border:1px solid var(--field-edge)}
 .chipset .pick{display:inline-flex;align-items:center;gap:5px}
 .chipset .pick svg{width:13px;height:13px}
 .range{display:flex;align-items:center;gap:6px;margin-left:6px}
 .range input[type=date]{width:auto;height:30px;padding:0 10px;font-size:13px;border-radius:999px;font-family:var(--num);color:var(--text)}
-.range input[type=date]:disabled{opacity:.45}
+.range input[type=date]:disabled{opacity:.6;cursor:not-allowed;color:var(--text-3)}
 .range button{font-size:13px;font-weight:500;height:30px;padding:0 12px;border-radius:999px;color:var(--text-2);background:transparent;border:1px solid var(--line-2)}
 .range button[aria-pressed="true"]{background:var(--ditto-wash);color:var(--ditto);border-color:transparent;font-weight:600}
 .filters select.on{color:var(--text);font-weight:600}
@@ -116,7 +136,10 @@ html{-webkit-tap-highlight-color:transparent}
 /* 패널 */
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;min-width:0}
 .panel > h3{font-size:15px;font-weight:600;margin:0 0 14px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
-.panel > h3 span{font-size:12px;font-weight:400;color:var(--text-3)}
+.ph{display:flex;align-items:baseline;gap:4px 10px;flex-wrap:wrap;margin:0 0 14px}
+.ph > h3{font-size:15px;font-weight:600;margin:0;text-wrap:balance}
+.panel > h3,.cal-top h2{text-wrap:balance}
+.phs{font-size:12px;color:var(--text-3);margin:0}
 #view > * + *{margin-top:12px}
 .bal{margin-bottom:12px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 32px;align-items:end}
 .bal .lbl{font-size:13px;color:var(--text-2)}
@@ -130,12 +153,13 @@ html{-webkit-tap-highlight-color:transparent}
 .bal dt{font-size:12px;color:var(--text-3)} .bal dd{margin:0;font-family:var(--num);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
 .bal .when{grid-column:1/-1;font-size:12px;color:var(--text-3);margin:4px 0 0}
 .pos{margin-bottom:12px}
-.pos > h3 .tot{margin-left:auto;font-size:15px;font-weight:600;font-family:var(--num)}
+.pos .ph .tot{margin-left:auto;font-size:15px;font-weight:600;font-family:var(--num)}
 .prow{display:grid;grid-template-columns:minmax(120px,1.3fr) repeat(5,minmax(76px,1fr)) minmax(70px,.8fr) 60px minmax(110px,1.1fr);gap:10px;align-items:center;padding:11px 8px;border-bottom:1px solid var(--line);font-size:13px;width:100%;text-align:left;font-variant-numeric:tabular-nums;border-radius:0}
 .prow:last-child{border-bottom:0}
 .prow.h{font-size:12px;color:var(--text-3);padding-top:4px}
 button.prow:hover{background:var(--hover)}
 .prow .r{text-align:right}
+.prow small{font-size:12px}
 .prow .u{font-family:var(--num);font-weight:600;font-size:14px}
 .prow .u small{display:block;font-weight:400;font-size:12px}
 .prow .sub{display:none}
@@ -153,8 +177,8 @@ button.prow:hover{background:var(--hover)}
 .chart svg{display:block;width:100%;overflow:visible}
 .chart .ax text{font-size:11px;fill:var(--text-3);font-family:var(--num)}
 .chart .gl line{stroke:var(--line);stroke-width:1}
-.tip{position:absolute;pointer-events:none;background:var(--raise);border:1px solid var(--line-2);color:var(--text);font-size:12px;border-radius:8px;padding:8px 10px;white-space:nowrap;transform:translate(-50%,calc(-100% - 12px));opacity:0;z-index:5;line-height:1.5;box-shadow:0 8px 24px rgba(0,0,0,.5)}
-.tip.show{opacity:1}
+.tip{position:absolute;pointer-events:none;background:var(--raise);border:1px solid var(--line-2);color:var(--text);font-size:12px;border-radius:8px;padding:8px 10px;white-space:nowrap;transform:translate(-50%,calc(-100% - 12px));z-index:5;line-height:1.5}
+.tip:not(.show){display:none}
 .dd-cap{display:flex;justify-content:space-between;font-size:12px;color:var(--text-3);margin:12px 0 4px}
 
 /* 지표 목록 */
@@ -183,7 +207,7 @@ table.t tr.click{cursor:pointer} table.t tr.click:hover td{background:var(--hove
 .dbar .z{position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--line-2)}
 .dbar .b{position:absolute;top:1px;height:8px;border-radius:2px}
 .side{font-weight:600}
-.side.long{color:var(--up)} .side.short{color:var(--down)}
+.side{color:var(--text-2)}   /* 롱·숏은 글자로 구분하고, 빨강·파랑은 손익에만 */
 .empty{color:var(--text-2);font-size:14px;padding:28px 0}
 .bwg+.bwg{margin-top:14px}
 .bwh{font-size:12px;color:var(--text-3);padding-bottom:4px;border-bottom:1px solid var(--line)}
@@ -210,7 +234,7 @@ table.t tr.click{cursor:pointer} table.t tr.click:hover td{background:var(--hove
 .cal-sum b small{font-size:12px;font-weight:500;margin-left:4px}
 .cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr)) minmax(0,.9fr);gap:4px}
 .cal .dow{font-size:12px;color:var(--text-3);padding:0 8px 6px;white-space:nowrap;overflow:hidden}
-.cell{position:relative;min-height:76px;padding:8px 9px;border-radius:8px;background:#121215;text-align:left;display:flex;flex-direction:column;overflow:hidden}
+.cell{position:relative;min-height:76px;padding:8px 9px;border-radius:8px;background:var(--cell);text-align:left;display:flex;flex-direction:column;overflow:hidden}
 .cell.blank{background:transparent}
 .cell.has{cursor:pointer}
 .cell.has:hover{box-shadow:inset 0 0 0 1px var(--text-3)}
@@ -252,7 +276,7 @@ button.row:hover{background:var(--hover)}
 .flag{font-size:11px;color:var(--text-2);background:var(--raise);border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:1px}
 .flag.hot{color:var(--up);background:var(--up-wash)}
 .flag.rs{color:var(--ditto);background:var(--ditto-wash)}
-.flag.rg{color:#000;background:var(--ditto);font-weight:600}
+.flag.rg{color:var(--ink-on);background:var(--ditto);font-weight:600}
 .regret-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .regret-row .chip{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;font-size:14px}
 .regret-row .chip svg{width:13px;height:13px}
@@ -261,10 +285,11 @@ button.row:hover{background:var(--hover)}
 .more{padding:16px 0 4px;text-align:center}
 
 /* 상세 */
-.veil{position:fixed;inset:0;background:rgba(0,0,0,.65);opacity:0;pointer-events:none;transition:opacity .18s;z-index:30}
+.veil{position:fixed;inset:0;background:var(--veil);opacity:0;pointer-events:none;transition:opacity .18s;z-index:30}
 .veil.show{opacity:1;pointer-events:auto}
 .drawer{position:fixed;top:0;right:0;bottom:0;width:min(460px,100%);background:var(--panel);border-left:1px solid var(--line-2);transform:translateX(100%);transition:transform .22s cubic-bezier(.2,.8,.2,1);z-index:31;display:flex;flex-direction:column}
-.drawer.show{transform:none}
+.drawer.show{transform:none;visibility:visible;transition:transform .22s cubic-bezier(.2,.8,.2,1)}
+.drawer:not(.show){visibility:hidden;transition:transform .22s cubic-bezier(.2,.8,.2,1),visibility 0s linear .22s}
 @media (prefers-reduced-motion:reduce){.drawer,.veil{transition:none}}
 .d-head{padding:18px 20px 16px;display:flex;gap:12px;align-items:flex-start;border-bottom:1px solid var(--line)}
 .d-head .h{flex:1;min-width:0}
@@ -283,7 +308,7 @@ button.row:hover{background:var(--hover)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{background:var(--raise);border-radius:999px;padding:6px 12px;font-size:13px;color:var(--text-2)}
 .chip:hover{color:var(--text)}
-.chip[aria-pressed="true"]{background:var(--ditto);color:#000;font-weight:600}
+.chip[aria-pressed="true"]{background:var(--ditto);color:var(--ink-on);font-weight:600}
 .drawer textarea{min-height:150px;resize:vertical;line-height:1.65}
 .d-foot{padding:12px 20px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center}
 .d-foot .st{font-size:12px;color:var(--text-3);margin-right:auto}
@@ -312,20 +337,20 @@ button.row:hover{background:var(--hover)}
 .exhead{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .exhead .nm{font-size:15px;font-weight:700;min-width:60px}
 .exhead .st{font-size:12px;color:var(--text-3);margin-right:auto}
-.exhead .st.ok{color:#2ebd85} .exhead .st.bad{color:var(--up)}
+.exhead .st.ok{color:var(--ok)} .exhead .st.bad{color:var(--up)}
 .expanel{margin-top:16px}
 ol.steps{margin:0 0 14px;padding-left:18px;color:var(--text-2);font-size:13px;line-height:1.75}
 ol.steps b{color:var(--text);font-weight:600}
 ol.steps a{color:var(--ditto)}
 .exmsg{font-size:13px;margin-top:10px;line-height:1.6;color:var(--text-2)}
-.exmsg.ok{color:#2ebd85} .exmsg.bad{color:var(--up)}
+.exmsg.ok{color:var(--ok)} .exmsg.bad{color:var(--up)}
 .note{font-size:12px;color:var(--text-3);line-height:1.65;margin:12px 0 0}
 a.btn{text-decoration:none}
 label.btn{cursor:pointer}
 .onb{padding:40px 8px;max-width:520px}
 .onb h2{font-size:22px;font-weight:700;margin:0 0 10px}
 .onb p{color:var(--text-2);margin:0 0 20px}
-.toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,16px);background:var(--text);color:#000;font-weight:600;padding:10px 16px;border-radius:999px;font-size:13px;opacity:0;transition:.18s;z-index:50;pointer-events:none;max-width:90vw}
+.toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,16px);background:var(--text);color:var(--ink-on);font-weight:600;padding:10px 16px;border-radius:999px;font-size:13px;opacity:0;transition:.18s;z-index:50;pointer-events:none;max-width:90vw}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .loading{padding:80px 0;color:var(--text-3)}
 
@@ -339,6 +364,12 @@ label.btn{cursor:pointer}
   .kvl{grid-template-columns:repeat(4,minmax(0,1fr))}
   .kvl > div:nth-child(n+3){border-top:0}
   .kvl > div:nth-child(n+5){border-top:1px solid var(--line)}
+}
+@media (max-width:960px){
+  .prow.h{display:none}
+  .prow{grid-template-columns:1fr auto;grid-template-areas:"a b" "c b";row-gap:3px;padding:12px 2px}
+  .prow > *{display:none}
+  .prow .s{display:block;grid-area:a} .prow .u{display:block;grid-area:b;align-self:center} .prow .sub{display:block;grid-area:c;font-size:12px;color:var(--text-3)}
 }
 @media (max-width:760px){
   .wrap{padding:0 12px calc(76px + env(safe-area-inset-bottom))}
@@ -361,7 +392,7 @@ label.btn{cursor:pointer}
   .d-head{padding-top:calc(16px + env(safe-area-inset-top,0px))}
   .d-foot{padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
   .modal{padding:calc(8px + env(safe-area-inset-top,0px)) 8px calc(8px + env(safe-area-inset-bottom,0px))}
-  .bnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:25;background:rgba(10,10,12,.96);backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
+  .bnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:25;background:var(--bnav-bg);backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
   .bnav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600;color:var(--text-3);padding:6px 0}
   .bnav button svg{width:20px;height:20px}
   .bnav button[aria-selected="true"]{color:var(--text)}
@@ -389,10 +420,6 @@ label.btn{cursor:pointer}
   .wdrow > *{display:none}
   .wdrow .w-when{display:block;grid-area:c;font-size:12px;color:var(--text-3)} .wdrow .w-ccy{display:block;grid-area:a;font-weight:600}
   .wdrow .w-amt{display:block;grid-area:b;font-weight:600} .wdrow .w-st{display:block;grid-area:d;font-size:12px;color:var(--text-3)}
-  .prow.h{display:none}
-  .prow{grid-template-columns:1fr auto;grid-template-areas:"a b" "c b";row-gap:3px;padding:12px 2px}
-  .prow > *{display:none}
-  .prow .s{display:block;grid-area:a} .prow .u{display:block;grid-area:b;align-self:center} .prow .sub{display:block;grid-area:c;font-size:12px;color:var(--text-3)}
   .row.h{display:none}
   .row{grid-template-columns:1fr auto;grid-template-areas:"a b" "c d";row-gap:2px;padding:12px 4px}
   .row > *{display:none}
@@ -570,7 +597,7 @@ var TJSeal=(()=>{var M1=Object.create;var kf=Object.defineProperty;var T1=Object
 const DEFAULT_REASONS = ["지표","스캐너","작도","기타"];
 const DEFAULT_TAGS = ["손절 미준수","근거 없는 진입","추격 진입","조기 익절","원칙 밖 추가매수","과한 레버리지·비중","보복 매매","혼조 구간 진입"];
 const CLOSE_TYPE = {"1":"부분청산","2":"전체청산","3":"강제청산","4":"부분 강제청산","5":"ADL","6":"ADL"};
-const APP_VERSION = "3.30";
+const APP_VERSION = "3.31";
 const EXCHANGES = {
   okx: { name:"OKX", url:"https://www.okx.com/account/my-api",
     fields:[["API Key","OKX_API_KEY"],["Secret Key","OKX_SECRET_KEY"],["Passphrase","OKX_PASSPHRASE"]],
@@ -690,7 +717,7 @@ function posPanel(){
   const op = openNow().map(livePos).sort((a,b)=>(b.notional||0)-(a.notional||0));
   if(!op.length) return "";
   const tot = op.reduce((a,x)=>a+(x.upl||0),0), ts = (S.openTs||{});
-  const when = S.marksTs ? `현재가 ${fmtTime(S.marksTs)} 기준, 포지션 목록은 ${ts.ts?fmtDT(ts.ts):"마지막 수집"} 수집` : `${ts.ts?fmtDT(ts.ts):"마지막 수집"} 수집 기준${VIEW?"":". 동기화를 누르면 새로 가져와요"}`;
+  const when = S.marksTs ? `현재가 ${fmtTime(S.marksTs)} 기준, 포지션 목록은 ${ts.ts?fmtDT(ts.ts):"마지막 수집"} 수집` : `${ts.ts?fmtDT(ts.ts)+" 수집":"마지막 수집"} 기준${VIEW?"":". 동기화를 누르면 새로 가져와요"}`;
   const multi = new Set(op.map(x=>x.exchange)).size>1;
   const row = x => {
     const tr = S.trades.find(t=>t.id===x.id), tag = tr ? `button class="prow" data-trade="${esc(x.id)}"` : `div class="prow"`;
@@ -707,7 +734,7 @@ function posPanel(){
       <span class="sub n">${fmtPx(x.avgPx)} → ${fmtPx(x.mark)}, ${x.margin!=null?`마진 ${fmtN(x.margin,0)} / `:""}${x.notional!=null?"규모 "+fmtN(x.notional,0)+" USDT":""}, ${fmtDur(Date.now()-x.cTime)}${x.liqPx?`, 청산가 ${fmtPx(x.liqPx)}`:""}</span>
     </${tag.split(" ")[0]}>`;
   };
-  return `<section class="panel pos" id="posPanel"><h3>보유 중 포지션 <span>${op.length}개${(()=>{ const u = marginUse(); return u&&u.n ? `, 마진 ${fmtN(u.m,0)} USDT = 계좌의 <b class="${useTone(u.pct)}" style="font-weight:600">${(u.pct*100).toFixed(1)}%</b>` : ""; })()}</span><b class="tot ${tone(tot)}">${fmtS(tot)}<small class="dim" style="font-size:12px;font-weight:400"> 미실현</small></b></h3>
+  return `<section class="panel pos" id="posPanel"><div class="ph"><h3>보유 중 포지션</h3><span class="phs">${op.length}개${(()=>{ const u = marginUse(); return u&&u.n ? `, 마진 ${fmtN(u.m,0)} USDT = 계좌의 ${(u.pct*100).toFixed(1)}%` : ""; })()}</span><b class="tot ${tone(tot)}">${fmtS(tot)}<small class="dim" style="font-size:12px;font-weight:400"> 미실현</small></b></div>
     <div class="prow h"><span>종목</span><span class="r">마진</span><span class="r">규모</span><span class="r">진입가</span><span class="r">현재가</span><span class="r">청산가</span><span class="r">펀딩비</span><span class="r">보유</span><span class="r">미실현 손익</span></div>
     ${op.map(row).join("")}
     <p class="when">${when}</p></section>`;
@@ -1178,12 +1205,12 @@ function renderDash(){
   </div>
 
   <section class="panel">
-    <h3>진입 근거별 성과<span>줄을 누르면 그 근거로 들어간 매매만 모아 봐요</span></h3>
+    <div class="ph"><h3>진입 근거별 성과</h3><p class="phs">줄을 누르면 그 근거로 들어간 매매만 모아 봐요</p></div>
     ${reasonTable(s.t)}
   </section>
 
   <section class="panel">
-    <h3>실수별 손익<span>복기에서 체크한 실수가 실제로 얼마를 잃게 했는지. 실수가 여러 개인 매매는 각 줄에 모두 들어가요</span></h3>
+    <div class="ph"><h3>실수별 손익</h3><p class="phs">복기에서 체크한 실수가 실제로 얼마를 잃게 했는지. 실수가 여러 개인 매매는 각 줄에 모두 들어가요</p></div>
     ${mistakeTable(s.t)}
   </section>
 
@@ -1278,8 +1305,8 @@ function drawEquity(s, hOverride){
     <g class="ax">${yt.map(v=>`<text x="${L-10}" y="${(Y(v)+4).toFixed(1)}" text-anchor="end">${compact(v)}</text>`).join("")}${xl}</g>
     <path d="${path}L${X(last.x).toFixed(1)},${Y(0).toFixed(1)}L${X(pts[0].x).toFixed(1)},${Y(0).toFixed(1)}Z" fill="url(#g1)"/>
     <path d="${path}" fill="none" stroke="var(--ditto)" stroke-width="2.25" stroke-linejoin="round" stroke-linecap="round"/>
-    <circle cx="${X(last.x).toFixed(1)}" cy="${Y(last.y).toFixed(1)}" r="4.5" fill="var(--ditto)" stroke="#000" stroke-width="2"/>
-    <g id="hv" style="display:none"><line id="hl" y1="${T}" y2="${H-B}" stroke="var(--text-3)" stroke-dasharray="2 4"/><circle id="hc" r="5" fill="var(--ditto)" stroke="#000" stroke-width="2"/></g>
+    <circle cx="${X(last.x).toFixed(1)}" cy="${Y(last.y).toFixed(1)}" r="4.5" fill="var(--ditto)" stroke="var(--bg)" stroke-width="2"/>
+    <g id="hv" style="display:none"><line id="hl" y1="${T}" y2="${H-B}" stroke="var(--text-3)" stroke-dasharray="2 4"/><circle id="hc" r="5" fill="var(--ditto)" stroke="var(--bg)" stroke-width="2"/></g>
     <rect id="hit" x="${L}" y="0" width="${W-L-R}" height="${H}" fill="transparent"/>
   </svg><div class="tip" id="tip"></div>`;
   const dlo=Math.min(-1,...pts.map(p=>p.dd)), DY=v=>4+(v/dlo)*(DH-8);
