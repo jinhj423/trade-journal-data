@@ -5,22 +5,22 @@
    "instId": "BTC-USDT-SWAP",
    "base": "BTC",
    "direction": "long",
-   "lever": 40.0,
+   "lever": 30.0,
    "mgnMode": "cross",
    "cTime": 1794583554756,
-   "qty": 0.0568,
-   "contracts": 5.68,
-   "avgPx": 68652.9,
-   "markPx": 68281.2,
-   "liqPx": 54436.864887480166,
-   "upl": -21.1126,
-   "uplRatio": -0.2165676905127079,
-   "margin": 96.95930399999999,
-   "notional": 3873.91,
+   "qty": 0.1007,
+   "contracts": 10.07,
+   "avgPx": 67996.31817279047,
+   "markPx": 67588.5,
+   "liqPx": 60126.28842634364,
+   "upl": -41.0673,
+   "uplRatio": -0.1799295243107724,
+   "margin": 226.87206500000002,
+   "notional": 6799.49,
    "ccy": "USDT",
-   "fundingFee": -0.149316,
-   "fee": -1.949742
+   "fundingFee": -0.302077,
+   "fee": -3.423615
   }
  ],
- "ts": 1794609193393
+ "ts": 1794625643037
 }
