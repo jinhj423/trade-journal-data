@@ -1,26 +1,4 @@
 {
- "okx": [
-  {
-   "id": "3672867197426786304_1794691553488",
-   "instId": "BTC-USDT-SWAP",
-   "base": "BTC",
-   "direction": "long",
-   "lever": 30.0,
-   "mgnMode": "cross",
-   "cTime": 1794691553488,
-   "qty": 0.0229,
-   "contracts": 2.29,
-   "avgPx": 64400.0,
-   "markPx": 64770.2,
-   "liqPx": 56506.30311824505,
-   "upl": 8.4776,
-   "uplRatio": 0.1724534161490676,
-   "margin": 49.441252666666664,
-   "notional": 1482.21,
-   "ccy": "USDT",
-   "fundingFee": 0.055611,
-   "fee": -0.73738
-  }
- ],
- "ts": 1794710083161
+ "okx": [],
+ "ts": 1794739371386
 }
