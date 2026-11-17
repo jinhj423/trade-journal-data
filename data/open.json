@@ -1,6 +1,27 @@
 {
  "okx": [
   {
+   "id": "3672443503567101952_1794920315495",
+   "instId": "BTC-USDT-SWAP",
+   "base": "BTC",
+   "direction": "short",
+   "lever": 30.0,
+   "mgnMode": "cross",
+   "cTime": 1794920315495,
+   "qty": 0.0349,
+   "contracts": 3.49,
+   "avgPx": 65059.9,
+   "markPx": 65000.6,
+   "liqPx": 71967.8737922923,
+   "upl": 2.0696,
+   "uplRatio": 0.027344032191875,
+   "margin": 75.61736466666666,
+   "notional": 2266.18,
+   "ccy": "USDT",
+   "fundingFee": 0.0,
+   "fee": -1.135295
+  },
+  {
    "id": "4046837925077241856_1794880214921",
    "instId": "ETH-USDT-SWAP",
    "base": "ETH",
@@ -11,14 +32,14 @@
    "qty": 0.713,
    "contracts": 7.13,
    "avgPx": 1819.09,
-   "markPx": 1830.81,
-   "liqPx": 1719.8339134930716,
-   "upl": 8.3564,
-   "uplRatio": 0.1095272911180878,
-   "margin": 76.29477470588235,
-   "notional": 1304.06,
+   "markPx": 1820.08,
+   "liqPx": 1719.79610162809,
+   "upl": 0.7059,
+   "uplRatio": 0.0092518786865952,
+   "margin": 76.3216132462455,
+   "notional": 1296.38,
    "ccy": "USDT",
-   "fundingFee": 0.0,
+   "fundingFee": 0.026839,
    "fee": -0.648506
   },
   {
@@ -32,16 +53,16 @@
    "qty": 1.07,
    "contracts": 1.07,
    "avgPx": 139.36,
-   "markPx": 138.44,
+   "markPx": 138.53,
    "liqPx": null,
-   "upl": -0.9844,
-   "uplRatio": -0.0198048220436282,
-   "margin": 49.376933333333334,
-   "notional": 147.98,
+   "upl": -0.8881,
+   "uplRatio": -0.0178673938002298,
+   "margin": 49.40903333333333,
+   "notional": 148.07,
    "ccy": "USDT",
    "fundingFee": 0.0,
    "fee": -0.074558
   }
  ],
- "ts": 1794887115380
+ "ts": 1794921161039
 }
