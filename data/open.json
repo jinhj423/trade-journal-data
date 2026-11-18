@@ -1,47 +1,26 @@
 {
  "okx": [
   {
-   "id": "3672443503567101952_1794979261306",
+   "id": "3672867197426786304_1795016897837",
    "instId": "BTC-USDT-SWAP",
    "base": "BTC",
-   "direction": "short",
+   "direction": "long",
    "lever": 30.0,
    "mgnMode": "cross",
-   "cTime": 1794979261306,
-   "qty": 0.0456,
-   "contracts": 4.56,
-   "avgPx": 64674.6,
-   "markPx": 63954.9,
-   "liqPx": 73550.58326338122,
-   "upl": 32.8183,
-   "uplRatio": 0.333840487610283,
-   "margin": 97.21144799999999,
-   "notional": 2912.93,
+   "cTime": 1795016897837,
+   "qty": 0.094,
+   "contracts": 9.4,
+   "avgPx": 62705.59670212766,
+   "markPx": 62304.7,
+   "liqPx": 57797.084171560804,
+   "upl": -37.6843,
+   "uplRatio": -0.1917994835606396,
+   "margin": 195.2213933333333,
+   "notional": 5848.21,
    "ccy": "USDT",
-   "fundingFee": 0.070742,
-   "fee": -1.474581
-  },
-  {
-   "id": "4103381290861907968_1794792692109",
-   "instId": "SPCX-USDT-SWAP",
-   "base": "SPCX",
-   "direction": "long",
-   "lever": 3.0,
-   "mgnMode": "cross",
-   "cTime": 1794792692109,
-   "qty": 1.07,
-   "contracts": 1.07,
-   "avgPx": 139.36,
-   "markPx": 142.72,
-   "liqPx": null,
-   "upl": 3.5952,
-   "uplRatio": 0.0723306544202063,
-   "margin": 50.903466666666674,
-   "notional": 152.53,
-   "ccy": "USDT",
-   "fundingFee": 0.0,
-   "fee": -0.074558
+   "fundingFee": -0.187095,
+   "fee": -2.947163
   }
  ],
- "ts": 1795009921658
+ "ts": 1795038714985
 }
