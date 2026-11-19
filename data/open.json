@@ -1,26 +1,26 @@
 {
  "okx": [
   {
-   "id": "3672867197426786304_1795016897837",
-   "instId": "BTC-USDT-SWAP",
-   "base": "BTC",
+   "id": "4046837925077241856_1795046235845",
+   "instId": "ETH-USDT-SWAP",
+   "base": "ETH",
    "direction": "long",
-   "lever": 30.0,
-   "mgnMode": "cross",
-   "cTime": 1795016897837,
-   "qty": 0.094,
-   "contracts": 9.4,
-   "avgPx": 62705.59670212766,
-   "markPx": 62304.7,
-   "liqPx": 57797.084171560804,
-   "upl": -37.6843,
-   "uplRatio": -0.1917994835606396,
-   "margin": 195.2213933333333,
-   "notional": 5848.21,
+   "lever": 17.0,
+   "mgnMode": "isolated",
+   "cTime": 1795046235845,
+   "qty": 0.948,
+   "contracts": 9.48,
+   "avgPx": 1778.01,
+   "markPx": 1767.33,
+   "liqPx": 1680.9962816102413,
+   "upl": -10.1246,
+   "uplRatio": -0.1021141613376766,
+   "margin": 99.14957251084043,
+   "notional": 1673.57,
    "ccy": "USDT",
-   "fundingFee": -0.187095,
-   "fee": -2.947163
+   "fundingFee": -0.000632,
+   "fee": -0.842777
   }
  ],
- "ts": 1795038714985
+ "ts": 1795058237401
 }
