@@ -1,12 +1,12 @@
 {
  "okx": {
-  "equity": 355.65,
-  "avail": 0.0,
-  "margin": 400.46,
-  "upl": -262.03,
-  "total": 361.33,
-  "funding": 4.87,
+  "equity": 0.0,
+  "avail": null,
+  "margin": null,
+  "upl": 0,
+  "total": 6.04,
+  "funding": 6.04,
   "earn": 0.0
  },
- "ts": 1795224342551
+ "ts": 1795253996688
 }
